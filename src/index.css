@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-serif: Georgia, serif;
+    --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-logo {
+  font-family: 'Cinzel Decorative', 'Syne', serif;
+  letter-spacing: 0.02em;
+}
+
+/* Site-wide Content & Story Copy Protection */
+.prevent-copy,
+.story-content,
+.story-reader-text,
+.unselectable {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Ensure inputs, textareas, and editable fields are selectable */
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Custom Lilac Color utilities if needed */
+.bg-lilac-50 { background-color: #fcf7ff; }
+.bg-lilac-100 { background-color: #f3e8ff; }
+.bg-lilac-500 { background-color: #a855f7; }
+.bg-lilac-600 { background-color: #9333ea; }
+.bg-lilac-700 { background-color: #7e22ce; }
+
+.text-lilac-500 { color: #a855f7; }
+.text-lilac-600 { color: #9333ea; }
+.text-lilac-700 { color: #7e22ce; }
+
+.border-lilac-200 { border-color: #e9d5ff; }
+.border-lilac-500 { border-color: #a855f7; }
+
+/* Custom Scrollbar for sleek aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.5);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}

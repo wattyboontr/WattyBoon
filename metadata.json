@@ -1,0 +1,6 @@
+{
+  "name": "WattyBoon",
+  "description": "WattyBoon - Hikaye okuma, yazma ve keşfetme platformu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

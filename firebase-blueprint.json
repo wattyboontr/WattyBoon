@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "Registered WattyBoon users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "bio": { "type": "string" },
+        "followers": { "type": "array", "items": { "type": "string" } },
+        "following": { "type": "array", "items": { "type": "string" } },
+        "joinedDate": { "type": "string" },
+        "library": { "type": "array" },
+        "readingProgress": { "type": "array" },
+        "customLists": { "type": "array" }
+      },
+      "required": ["id", "name", "username"]
+    },
+    "stories": {
+      "title": "Story",
+      "description": "Stories published or created by users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "coverUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorUsername": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "publishedAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "isPublished": { "type": "boolean" },
+        "isDraft": { "type": "boolean" },
+        "isPrivate": { "type": "boolean" },
+        "isNsfw": { "type": "boolean" },
+        "viewsCount": { "type": "number" },
+        "readTime": { "type": "string" },
+        "chapters": { "type": "array" },
+        "comments": { "type": "array" },
+        "likedBy": { "type": "array", "items": { "type": "string" } },
+        "rating": { "type": "number" }
+      },
+      "required": ["id", "title", "authorId"]
+    },
+    "notifications": {
+      "title": "Notification",
+      "description": "User notifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "isRead": { "type": "boolean" }
+      }
+    },
+    "messages": {
+      "title": "Message",
+      "description": "Direct messages between users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "isRead": { "type": "boolean" }
+      }
+    },
+    "paragraphComments": {
+      "title": "ParagraphComment",
+      "description": "In-line paragraph comments on story chapters",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "storyId": { "type": "string" },
+        "chapterIndex": { "type": "number" },
+        "paragraphIndex": { "type": "number" },
+        "userId": { "type": "string" },
+        "content": { "type": "string" }
+      }
+    }
+  }
+}
