@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Category, Visibility, Chapter } from '../types';
 import { AIAssistantModal } from './AIAssistantModal';
+import { FormattedContent } from './FormattedContent';
 import { 
   PenTool, 
   Sparkles, 
@@ -26,7 +27,10 @@ import {
   FileText, 
   Check, 
   Eye,
-  Upload 
+  Upload,
+  Columns,
+  Maximize2,
+  X
 } from 'lucide-react';
 
 const CATEGORIES: Category[] = [
@@ -88,12 +92,42 @@ export const StoryEditor: React.FC = () => {
     ]
   );
   const [activeChapterIndex, setActiveChapterIndex] = useState<number>(0);
+  const [editorViewMode, setEditorViewMode] = useState<'edit' | 'preview' | 'split'>('edit');
 
   // AI Modal
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [savedSuccessToast, setSavedSuccessToast] = useState(false);
 
   const activeChapter = chapters[activeChapterIndex] || chapters[0];
+
+  // Helper to extract image URLs from chapter content
+  const extractChapterImages = (content: string) => {
+    const images: { alt: string; url: string; match: string }[] = [];
+    // Markdown regex
+    const mdRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    let match;
+    while ((match = mdRegex.exec(content)) !== null) {
+      images.push({ alt: match[1] || 'Görsel', url: match[2], match: match[0] });
+    }
+    // Standalone image URL regex
+    const lines = content.split(/\n+/);
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      const isUrl = /^https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg)(\?[^\s]*)?$/i.test(trimmed) ||
+                    /^data:image\/[a-zA-Z]+;base64,/i.test(trimmed);
+      if (isUrl && !images.some((i) => i.url === trimmed)) {
+        images.push({ alt: 'Görsel', url: trimmed, match: trimmed });
+      }
+    });
+    return images;
+  };
+
+  const currentChapterImages = extractChapterImages(activeChapter?.content || '');
+
+  const removeImageFromContent = (imageMatch: string) => {
+    const updated = activeChapter.content.replace(imageMatch, '').replace(/\n\n\n+/g, '\n\n');
+    handleChapterContentChange(updated);
+  };
 
   // Update Chapter Content
   const handleChapterContentChange = (content: string) => {
@@ -364,8 +398,24 @@ export const StoryEditor: React.FC = () => {
               value={coverUrl}
               onChange={(e) => setCoverUrl(e.target.value)}
               placeholder="Veya Özel Görsel URL yapıştırın..."
-              className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 mb-3"
             />
+
+            {coverUrl && (
+              <div className="relative rounded-2xl overflow-hidden border border-purple-200 dark:border-purple-900/50 shadow-sm bg-slate-100 dark:bg-slate-800 p-1 group">
+                <img 
+                  src={coverUrl} 
+                  alt="Kapak Görseli Önizleme" 
+                  className="w-full h-36 object-cover rounded-xl"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = PRESET_COVERS[0];
+                  }}
+                />
+                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                  Kapak Önizlemesi
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Visibility Options (Public vs Private requirement) */}
@@ -603,19 +653,103 @@ export const StoryEditor: React.FC = () => {
               >
                 <Code className="w-4 h-4" />
               </button>
+
+              {/* View Mode Toggle Buttons */}
+              <div className="ml-auto flex items-center gap-1 bg-slate-200 dark:bg-slate-700 p-0.5 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setEditorViewMode('edit')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all ${
+                    editorViewMode === 'edit'
+                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                  }`}
+                  title="Metin Düzenleyici"
+                >
+                  <PenTool className="w-3.5 h-3.5" />
+                  <span>Düzenle</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditorViewMode('preview')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all ${
+                    editorViewMode === 'preview'
+                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                  }`}
+                  title="Canlı Resimli Önizleme"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Önizleme</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditorViewMode('split')}
+                  className={`hidden md:flex px-2.5 py-1 rounded-lg text-[11px] font-bold items-center gap-1 transition-all ${
+                    editorViewMode === 'split'
+                      ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                  }`}
+                  title="Yan Yana Düzenleme ve Canlı Resim Görünümü"
+                >
+                  <Columns className="w-3.5 h-3.5" />
+                  <span>İkili Görünüm</span>
+                </button>
+              </div>
             </div>
 
-            {/* Textarea */}
-            <div className="p-4 flex-1">
-              <textarea
-                id="chapter-content-textarea"
-                rows={16}
-                value={activeChapter.content}
-                onChange={(e) => handleChapterContentChange(e.target.value)}
-                placeholder="Hikayenizin bu bölümünü buraya kaleme almaya başlayın..."
-                className="w-full h-full p-2 bg-transparent text-slate-800 dark:text-slate-100 font-serif text-base leading-relaxed focus:outline-none resize-none min-h-[350px]"
-              />
-            </div>
+            {/* Editor Body based on View Mode */}
+            {editorViewMode === 'edit' && (
+              <div className="p-4 flex-1">
+                <textarea
+                  id="chapter-content-textarea"
+                  rows={16}
+                  value={activeChapter.content}
+                  onChange={(e) => handleChapterContentChange(e.target.value)}
+                  placeholder="Hikayenizin bu bölümünü buraya kaleme almaya başlayın..."
+                  className="w-full h-full p-2 bg-transparent text-slate-800 dark:text-slate-100 font-serif text-base leading-relaxed focus:outline-none resize-none min-h-[350px]"
+                />
+              </div>
+            )}
+
+            {editorViewMode === 'preview' && (
+              <div className="p-6 flex-1 min-h-[380px] bg-slate-50/50 dark:bg-slate-950/30 overflow-y-auto">
+                <div className="max-w-2xl mx-auto">
+                  <h3 className="text-xl font-bold font-display text-purple-600 dark:text-purple-400 mb-6 border-b pb-2">
+                    {activeChapter.title || 'İsimsiz Bölüm'}
+                  </h3>
+                  <FormattedContent 
+                    content={activeChapter.content || 'Bu bölüm için henüz metin yazılmadı.'} 
+                    paragraphClassName="text-base font-serif text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+              </div>
+            )}
+
+            {editorViewMode === 'split' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800 flex-1 min-h-[400px]">
+                <div className="p-4 flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Metin Düzenleme</span>
+                  <textarea
+                    id="chapter-content-textarea"
+                    rows={16}
+                    value={activeChapter.content}
+                    onChange={(e) => handleChapterContentChange(e.target.value)}
+                    placeholder="Hikayenizi kaleme alın..."
+                    className="w-full flex-1 p-2 bg-transparent text-slate-800 dark:text-slate-100 font-serif text-sm leading-relaxed focus:outline-none resize-none min-h-[320px]"
+                  />
+                </div>
+                <div className="p-4 bg-slate-50/50 dark:bg-slate-950/30 overflow-y-auto">
+                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2 block">Canlı Görsel ve Biçim Önizleme</span>
+                  <FormattedContent 
+                    content={activeChapter.content || 'İçerik yazıldıkça burada canlı olarak görünecek.'} 
+                    paragraphClassName="text-sm font-serif text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Stats Footer */}
             <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
@@ -629,6 +763,60 @@ export const StoryEditor: React.FC = () => {
               <span className="text-[11px] italic">Otomatik taslak aktif</span>
             </div>
 
+          </div>
+
+          {/* Chapter Images Live View & Management Gallery */}
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800/80 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4" /> Bölüme Eklenen Görseller ({currentChapterImages.length})
+              </h4>
+              <span className="text-[11px] text-slate-400">
+                Resimler burada ve okuyucu ekranında canlı olarak görünür
+              </span>
+            </div>
+
+            {currentChapterImages.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+                {currentChapterImages.map((img, i) => (
+                  <div key={i} className="group relative bg-slate-50 dark:bg-slate-800 rounded-2xl p-2 border border-slate-200 dark:border-slate-700/80 shadow-sm flex flex-col items-center">
+                    <div className="relative w-full h-32 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-900">
+                      <img 
+                        src={img.url} 
+                        alt={img.alt} 
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800';
+                        }}
+                      />
+                    </div>
+                    <div className="w-full mt-2 flex items-center justify-between px-1">
+                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate max-w-[130px]">
+                        {img.alt && img.alt !== 'Görsel' ? img.alt : `Görsel #${i+1}`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeImageFromContent(img.match)}
+                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/80 transition-colors flex items-center gap-0.5 text-[10px] font-bold"
+                        title="Görseli Bölümden Kaldır"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Kaldır</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-dashed border-purple-200 dark:border-purple-800/50 text-center space-y-1">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Bölüme henüz resim eklenmedi
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+                  Araç çubuğundaki <strong>"Cihazdan Ekle"</strong> veya <strong>"Görsel URL Yapıştır"</strong> butonlarını kullanarak resim ekleyebilirsiniz. Eklediğiniz resimler anında burada ve <strong>"Önizleme"</strong> modunda görsel olarak görüntülenecektir.
+                </p>
+              </div>
+            )}
           </div>
 
         </div>

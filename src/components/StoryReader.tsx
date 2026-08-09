@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { FormattedContent } from './FormattedContent';
 import { 
   ArrowLeft, 
   BookOpen, 
@@ -477,14 +478,14 @@ export const StoryReader: React.FC = () => {
               return (
                 <div 
                   key={pIdx} 
-                  onContextMenu={(e) => handleParagraphContextMenu(e, pIdx)}
-                  onMouseUp={(e) => handleParagraphMouseUp(e, pIdx)}
-                  onTouchEnd={(e) => handleParagraphMouseUp(e as any, pIdx)}
                   className="group relative rounded-2xl p-2 sm:p-3 hover:bg-purple-500/5 transition-all cursor-text"
                 >
-                  <p className="leading-relaxed">
-                    {paragraphText}
-                  </p>
+                  <FormattedContent
+                    content={paragraphText}
+                    paragraphClassName="leading-relaxed"
+                    onParagraphContextMenu={(e) => handleParagraphContextMenu(e, pIdx)}
+                    onParagraphMouseUp={(e) => handleParagraphMouseUp(e, pIdx)}
+                  />
 
                   {/* Show comment count badge ONLY if comments exist on this paragraph */}
                   {pComments.length > 0 && (
