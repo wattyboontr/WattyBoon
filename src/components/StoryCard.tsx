@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Story } from '../types';
 import { useApp } from '../context/AppContext';
-import { BookOpen, Heart, Eye, Bookmark, Lock, Globe, ArrowRight, ListPlus } from 'lucide-react';
+import { BookOpen, Heart, Eye, Bookmark, Lock, Globe, ArrowRight, ListPlus, Flame, EyeOff } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
 
 interface StoryCardProps {
@@ -10,11 +10,22 @@ interface StoryCardProps {
 }
 
 export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) => {
-  const { openStoryDetail, openStoryReader, openAuthorProfile, isStoryInLibrary, toggleLibraryStory, toggleLikeStory, currentUser } = useApp();
+  const { 
+    openStoryDetail, 
+    openStoryReader, 
+    openAuthorProfile, 
+    isStoryInLibrary, 
+    toggleLibraryStory, 
+    toggleLikeStory, 
+    currentUser,
+    isNsfwEnabled,
+    toggleNsfw 
+  } = useApp();
   const [isCustomListModalOpen, setIsCustomListModalOpen] = useState(false);
 
   const isSaved = isStoryInLibrary(story.id);
   const isLiked = currentUser ? story.likedBy.includes(currentUser.id) : false;
+  const isBlurred = story.isNsfw && !isNsfwEnabled;
 
   if (layout === 'compact') {
     return (
@@ -22,14 +33,28 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
         onClick={() => openStoryDetail(story.id)}
         className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer transition-all group border border-transparent hover:border-purple-200 dark:hover:border-purple-900/50"
       >
-        <img 
-          src={story.coverUrl} 
-          alt={story.title} 
-          className="w-10 h-14 object-cover rounded-lg shadow-sm group-hover:scale-105 transition-transform duration-300" 
-        />
+        <div className="relative w-10 h-14 rounded-lg overflow-hidden shadow-sm flex-shrink-0 bg-slate-200 dark:bg-slate-800">
+          <img 
+            src={story.coverUrl} 
+            alt={story.title} 
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+              isBlurred ? 'blur-md filter scale-110 brightness-75' : ''
+            }`} 
+          />
+          {isBlurred && (
+            <div className="absolute inset-0 bg-slate-950/60 flex items-center justify-center">
+              <EyeOff className="w-4 h-4 text-rose-400 animate-pulse" />
+            </div>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 font-medium mb-0.5">
             <span>{story.category}</span>
+            {story.isNsfw && (
+              <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded text-[9px] font-black">
+                +18
+              </span>
+            )}
             {story.visibility === 'private' && (
               <span className="flex items-center gap-1 px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded text-[10px] font-semibold">
                 <Lock className="w-2.5 h-2.5" /> Özel
@@ -64,15 +89,35 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
           <img 
             src={story.coverUrl} 
             alt={story.title} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+              isBlurred ? 'blur-lg filter scale-110 brightness-75' : ''
+            }`} 
           />
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
+
+          {/* Blurred Overlay for Horizontal */}
+          {isBlurred && (
+            <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm p-2 flex flex-col items-center justify-center text-center gap-1.5 z-10">
+              <Flame className="w-6 h-6 text-rose-500 animate-bounce" />
+              <span className="text-[10px] font-black text-rose-300 uppercase tracking-wider">+18 İçerik</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleNsfw();
+                }}
+                className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[9px] rounded-lg shadow-md transition-colors"
+              >
+                Blur'u Kaldır
+              </button>
+            </div>
+          )}
+
+          <div className="absolute top-2 left-2 flex flex-col gap-1 z-20">
             <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-purple-900/80 backdrop-blur-md text-purple-100 border border-purple-400/30">
               {story.category}
             </span>
-            {story.visibility === 'private' && (
-              <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-amber-900/90 backdrop-blur-md text-amber-200 border border-amber-500/30 flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5" /> Özel
+            {story.isNsfw && (
+              <span className="px-1.5 py-0.5 text-[9px] font-black rounded bg-rose-600 text-white shadow-md">
+                +18
               </span>
             )}
           </div>
@@ -160,7 +205,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
     );
   }
 
-  // Grid Layout with Compact Cover Height
+  // Grid Layout
   return (
     <div className="group flex flex-col bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800/80 shadow-sm hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-900/60 transition-all duration-300">
       {/* Vertical Book Cover Image Container */}
@@ -171,11 +216,35 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
         <img 
           src={story.coverUrl} 
           alt={story.title} 
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+            isBlurred ? 'blur-md filter scale-110 brightness-75' : ''
+          }`} 
         />
+
+        {/* NSFW Blurred Cover Overlay */}
+        {isBlurred && (
+          <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm p-3 flex flex-col items-center justify-center text-center gap-2 z-10">
+            <div className="p-2 rounded-full bg-rose-600/20 text-rose-400 border border-rose-500/30">
+              <Flame className="w-6 h-6 animate-pulse" />
+            </div>
+            <span className="text-xs font-extrabold text-rose-300 uppercase tracking-wider">+18 Yetişkin İçerik</span>
+            <p className="text-[10px] text-slate-300 max-w-[140px] leading-tight">
+              Bu seri hassas veya yetişkin öğeler içerir.
+            </p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleNsfw();
+              }}
+              className="mt-1 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-[10px] rounded-xl shadow-md transition-all flex items-center gap-1"
+            >
+              Blur'u Kaldır (+18)
+            </button>
+          </div>
+        )}
         
         {/* Overlay Badges */}
-        <div className="absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none">
+        <div className="absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none z-20">
           <div className="flex items-center gap-1">
             <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-900/80 backdrop-blur-md text-purple-200 border border-purple-500/20 shadow-sm">
               {story.category}
@@ -200,7 +269,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
         </div>
 
         {/* Quick Save & Custom List Buttons */}
-        <div className="absolute bottom-1.5 right-1.5 flex gap-1">
+        <div className="absolute bottom-1.5 right-1.5 flex gap-1 z-20">
           <button
             onClick={(e) => {
               e.stopPropagation();

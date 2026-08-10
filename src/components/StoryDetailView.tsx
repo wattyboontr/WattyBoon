@@ -18,7 +18,8 @@ import {
   UserPlus,
   Send,
   Calendar,
-  ListPlus
+  ListPlus,
+  Flame
 } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
 
@@ -35,9 +36,13 @@ export const StoryDetailView: React.FC = () => {
     toggleLikeStory, 
     toggleLikeChapter,
     addComment,
+    toggleLikeComment,
+    addReplyToComment,
     currentUser,
     toggleFollowUser,
-    setSelectedTagFilter
+    setSelectedTagFilter,
+    isNsfwEnabled,
+    toggleNsfw
   } = useApp();
 
   const [commentText, setCommentText] = useState('');
@@ -105,8 +110,27 @@ export const StoryDetailView: React.FC = () => {
         <div className="relative z-10 flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
           
           {/* Vertical Story Cover Image */}
-          <div className="w-32 sm:w-44 aspect-[2/3] flex-shrink-0 rounded-2xl overflow-hidden shadow-2xl ring-2 ring-purple-500/20 bg-slate-100 dark:bg-slate-800 mx-auto md:mx-0">
-            <img src={story.coverUrl} alt={story.title} className="w-full h-full object-cover" />
+          <div className="relative w-32 sm:w-44 aspect-[2/3] flex-shrink-0 rounded-2xl overflow-hidden shadow-2xl ring-2 ring-purple-500/20 bg-slate-100 dark:bg-slate-800 mx-auto md:mx-0">
+            <img 
+              src={story.coverUrl} 
+              alt={story.title} 
+              className={`w-full h-full object-cover transition-all duration-300 ${
+                story.isNsfw && !isNsfwEnabled ? 'blur-md filter scale-110 brightness-75' : ''
+              }`} 
+            />
+
+            {story.isNsfw && !isNsfwEnabled && (
+              <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm p-3 flex flex-col items-center justify-center text-center gap-2 z-10">
+                <Flame className="w-6 h-6 text-rose-500 animate-pulse" />
+                <span className="text-[10px] font-extrabold text-rose-300 uppercase tracking-wider">+18 İçerik</span>
+                <button
+                  onClick={toggleNsfw}
+                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] rounded-lg shadow-md transition-all"
+                >
+                  Blur'u Kaldır
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Story Details & Meta Info */}
@@ -117,6 +141,12 @@ export const StoryDetailView: React.FC = () => {
               <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
                 {story.category}
               </span>
+
+              {story.isNsfw && (
+                <span className="px-2.5 py-1 rounded-full bg-rose-600 text-white font-black shadow-sm flex items-center gap-1">
+                  +18
+                </span>
+              )}
 
               <span className={`px-2.5 py-1 rounded-full font-semibold ${
                 story.status === 'completed'
@@ -410,18 +440,14 @@ export const StoryDetailView: React.FC = () => {
         <div className="space-y-3 pt-2">
           {story.comments.length > 0 ? (
             story.comments.map((comment) => (
-              <div key={comment.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-start gap-3">
-                <img src={comment.userAvatar} alt={comment.userName} className="w-8 h-8 rounded-full object-cover mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">{comment.userName}</h5>
-                    <span className="text-[10px] text-slate-400">{new Date(comment.createdAt).toLocaleDateString('tr-TR')}</span>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                    {comment.content}
-                  </p>
-                </div>
-              </div>
+              <CommentItem 
+                key={comment.id} 
+                comment={comment} 
+                storyId={story.id} 
+                toggleLikeComment={toggleLikeComment} 
+                addReplyToComment={addReplyToComment} 
+                currentUser={currentUser} 
+              />
             ))
           ) : (
             <p className="text-xs text-slate-400 text-center py-4">
@@ -440,3 +466,112 @@ export const StoryDetailView: React.FC = () => {
     </div>
   );
 };
+
+interface CommentItemProps {
+  comment: any;
+  storyId: string;
+  toggleLikeComment: (storyId: string, commentId: string) => void;
+  addReplyToComment: (storyId: string, parentCommentId: string, content: string) => void;
+  currentUser: any;
+}
+
+const CommentItem: React.FC<CommentItemProps> = ({
+  comment,
+  storyId,
+  toggleLikeComment,
+  addReplyToComment,
+  currentUser
+}) => {
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyText, setReplyText] = useState('');
+
+  const likesCount = comment.likes || 0;
+  const isLiked = currentUser ? (comment.likedBy || []).includes(currentUser.id) : false;
+
+  const handleSendReply = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    addReplyToComment(storyId, comment.id, replyText.trim());
+    setReplyText('');
+    setIsReplying(false);
+  };
+
+  return (
+    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80 space-y-2">
+      <div className="flex items-start gap-3">
+        <img src={comment.userAvatar} alt={comment.userName} className="w-8 h-8 rounded-full object-cover mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">{comment.userName}</h5>
+            <span className="text-[10px] text-slate-400">
+              {new Date(comment.createdAt).toLocaleDateString('tr-TR')}
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+            {comment.content}
+          </p>
+
+          {/* Action Bar: Like & Reply */}
+          <div className="flex items-center gap-4 mt-2 pt-1 text-[11px]">
+            <button
+              onClick={() => toggleLikeComment(storyId, comment.id)}
+              className={`flex items-center gap-1 font-medium transition-colors ${
+                isLiked ? 'text-rose-500 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-rose-500'
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current text-rose-500' : ''}`} />
+              <span>{likesCount}</span>
+            </button>
+
+            {currentUser && (
+              <button
+                onClick={() => setIsReplying(!isReplying)}
+                className="text-purple-600 dark:text-purple-400 font-semibold hover:underline"
+              >
+                Yanıtla
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Inline Reply Form */}
+      {isReplying && (
+        <form onSubmit={handleSendReply} className="mt-2 ml-11 flex gap-2">
+          <input
+            type="text"
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder={`${comment.userName} kullanıcısına yanıt yaz...`}
+            className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+            autoFocus
+          />
+          <button
+            type="submit"
+            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm"
+          >
+            Gönder
+          </button>
+        </form>
+      )}
+
+      {/* Nested Child Replies */}
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="ml-6 sm:ml-8 mt-2 space-y-2 border-l-2 border-purple-200 dark:border-purple-900/50 pl-3">
+          {comment.replies.map((child: any) => (
+            <CommentItem
+              key={child.id}
+              comment={child}
+              storyId={storyId}
+              toggleLikeComment={toggleLikeComment}
+              addReplyToComment={addReplyToComment}
+              currentUser={currentUser}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+

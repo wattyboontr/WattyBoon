@@ -18,6 +18,7 @@ import {
   X,
   Clock,
   Play,
+  CheckCircle2,
   ShieldAlert,
   PenTool
 } from 'lucide-react';
@@ -88,15 +89,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
   const [layoutMode, setLayoutMode] = useState<'grid' | 'horizontal'>('grid');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
 
-  // Filter public stories and filter NSFW if disabled
+  // Filter public stories
   const availableStories = useMemo(() => {
     return stories.filter((s) => {
       const isVisible = s.visibility === 'public' || (currentUser && s.authorId === currentUser.id);
-      if (!isVisible) return false;
-      if (!isNsfwEnabled && s.isNsfw) return false;
-      return true;
+      return isVisible;
     });
-  }, [stories, currentUser, isNsfwEnabled]);
+  }, [stories, currentUser]);
 
   // Featured Story for Hero Banner
   const featuredStory = useMemo(() => {
@@ -141,6 +140,16 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
     return [...availableStories]
       .sort((a, b) => (b.reads * 0.4 + b.likes * 0.6) - (a.reads * 0.4 + a.likes * 0.6))
       .slice(0, 8);
+  }, [availableStories]);
+
+  // Completed Stories (Tamamlanan Hikayeler)
+  const completedStories = useMemo(() => {
+    const completed = availableStories.filter((s) => s.status === 'completed');
+    if (completed.length === 0) {
+      // If no story is explicitly marked completed yet, fallback to top stories
+      return [...availableStories].sort((a, b) => b.chapters.length - a.chapters.length).slice(0, 8);
+    }
+    return completed.sort((a, b) => b.reads - a.reads).slice(0, 8);
   }, [availableStories]);
 
   // Filtered stories result
@@ -478,13 +487,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
 
       {/* Hero Featured Story Banner */}
       {featuredStory && !filters.query && filters.category === 'Tümü' && (
-        <section className="relative rounded-3xl overflow-hidden bg-slate-900 border border-purple-900/40 shadow-2xl">
-          {/* Background Blur Image */}
-          <div className="absolute inset-0 z-0 opacity-30">
-            <img src={featuredStory.coverUrl} alt="Background" className="w-full h-full object-cover filter blur-3xl scale-125" />
-          </div>
-
-          <div className="relative z-10 p-6 sm:p-10 lg:p-12 flex flex-col md:flex-row items-center gap-8 bg-gradient-to-t md:bg-gradient-to-r from-slate-950 via-slate-950/90 to-purple-950/40">
+        <section className="relative rounded-3xl overflow-hidden bg-transparent backdrop-blur-md border border-purple-500/20 shadow-sm">
+          <div className="relative z-10 p-6 sm:p-10 lg:p-12 flex flex-col md:flex-row items-center gap-8 bg-transparent">
             
             {/* Left Info */}
             <div className="flex-1 space-y-4 text-left">
@@ -492,16 +496,16 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold shadow-md shadow-purple-500/20">
                   <Flame className="w-3.5 h-3.5" /> HAFTANIN POPÜLERİ
                 </span>
-                <span className="px-3 py-1 rounded-full bg-slate-800/80 text-purple-300 text-xs font-semibold border border-purple-500/30">
+                <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-semibold border border-purple-300 dark:border-purple-500/30">
                   {featuredStory.category}
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-display font-extrabold text-white tracking-tight leading-tight">
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
                 {featuredStory.title}
               </h1>
 
-              <p className="text-sm sm:text-base text-slate-300 line-clamp-3 leading-relaxed max-w-2xl font-light">
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed max-w-2xl font-light">
                 {featuredStory.summary}
               </p>
 
@@ -513,10 +517,10 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
                 >
                   <img src={featuredStory.authorAvatar} alt={featuredStory.authorName} className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500" />
                   <div>
-                    <p className="text-sm font-bold text-white group-hover/author:text-purple-300 transition-colors">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white group-hover/author:text-purple-600 dark:group-hover/author:text-purple-300 transition-colors">
                       {featuredStory.authorName}
                     </p>
-                    <p className="text-xs text-purple-300/80">@{featuredStory.authorUsername}</p>
+                    <p className="text-xs text-slate-500 dark:text-purple-300/80">@{featuredStory.authorUsername}</p>
                   </div>
                 </div>
 
@@ -529,7 +533,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
                   </button>
                   <button
                     onClick={() => openStoryDetail(featuredStory.id)}
-                    className="px-4 py-2.5 rounded-2xl bg-slate-800/80 border border-slate-700 text-slate-200 hover:border-purple-400 font-bold text-xs transition-all"
+                    className="px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-purple-400 font-bold text-xs transition-all"
                   >
                     Detaylar
                   </button>
@@ -538,7 +542,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
                     className={`p-2.5 rounded-2xl border transition-all ${
                       isStoryInLibrary(featuredStory.id)
                         ? 'bg-purple-600 border-purple-500 text-white'
-                        : 'bg-slate-800/80 border-slate-700 text-slate-200 hover:border-purple-500'
+                        : 'bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-purple-500'
                     }`}
                     title="Kütüphaneye Ekle"
                   >
@@ -573,6 +577,27 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
             {recommendedStories.map((story) => (
               <StoryCard key={`rec_${story.id}`} story={story} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Completed Stories Section (Tamamlanan Hikayeler) */}
+      {!filters.query && filters.category === 'Tümü' && completedStories.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              Tamamlanan Hikayeler
+            </h2>
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              Final Yapan Kurgular
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {completedStories.map((story) => (
+              <StoryCard key={`comp_${story.id}`} story={story} />
             ))}
           </div>
         </section>

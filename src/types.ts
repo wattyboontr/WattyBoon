@@ -16,6 +16,10 @@ export type Category =
   | 'Hayran Kurgu'
   | 'Macera'
   | 'LGBTQ'
+  | 'LGBTQ+'
+  | 'Mitoloji'
+  | 'Mizah'
+  | 'Felsefe'
   | 'Psikoloji'
   | 'Tarihi'
   | 'Gizem / Gerilim'
@@ -157,4 +161,33 @@ export interface SearchFilters {
   sortBy: 'popular' | 'reads' | 'newest' | 'likes';
   status: 'all' | 'ongoing' | 'completed';
   tag?: string;
+}
+
+export interface ForumReply {
+  id: string;
+  userId: string;
+  userName: string;
+  userUsername: string;
+  userAvatar: string;
+  content: string;
+  createdAt: string;
+  likes: number;
+  likedBy: string[];
+}
+
+export interface ForumTopic {
+  id: string;
+  title: string;
+  content: string;
+  category: 'Genel Sohbet' | 'Hikaye İncelemeleri' | 'Yazarlık Tüyoları' | 'Teoriler & Keşifler' | 'Duyuru & Öneriler';
+  authorId: string;
+  authorName: string;
+  authorUsername: string;
+  authorAvatar: string;
+  tags: string[];
+  createdAt: string;
+  likes: number;
+  likedBy: string[];
+  replies: ForumReply[];
+  isPinned?: boolean;
 }

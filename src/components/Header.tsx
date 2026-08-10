@@ -14,11 +14,13 @@ import {
   Moon, 
   User as UserIcon, 
   LogOut, 
+  LogIn,
   Sparkles, 
   Lock, 
   ChevronDown,
   CheckCircle2,
   MessageCircle,
+  MessageSquare,
   HelpCircle,
   Info,
   ShieldCheck,
@@ -116,6 +118,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
           >
             <Bookmark className="w-4 h-4" />
             Kütüphanem
+          </button>
+
+          <button
+            onClick={() => setActiveView('forum')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeView === 'forum'
+                ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-300 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Tartışma & Forum
           </button>
 
           {/* Hikaye Yaz & Hikayeni Düzelt Dropdown */}
@@ -227,9 +241,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
                 </button>
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-purple-500/20 transition-all"
+                  className="p-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md shadow-purple-500/20 transition-all flex items-center justify-center"
+                  title="Giriş Yap"
+                  aria-label="Giriş Yap"
                 >
-                  Giriş Yap
+                  <LogIn className="w-4 h-4" />
                 </button>
               </div>
             )}

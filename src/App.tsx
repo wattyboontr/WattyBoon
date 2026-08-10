@@ -13,6 +13,8 @@ import { AuthModal } from './components/AuthModal';
 import { MessagesModal } from './components/MessagesModal';
 import { InfoModal, InfoTabType } from './components/InfoModal';
 import { CategoriesModal } from './components/CategoriesModal';
+import { ForumView } from './components/ForumView';
+import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { Footer } from './components/Footer';
 import { ShieldAlert, Lock } from 'lucide-react';
 
@@ -103,6 +105,7 @@ const AppContent: React.FC = () => {
         {activeView === 'explore' && <ExploreView onOpenCategoriesModal={openCategoriesModal} />}
         {activeView === 'story-detail' && <StoryDetailView />}
         {activeView === 'library' && <LibraryView />}
+        {activeView === 'forum' && <ForumView />}
         {activeView === 'editor' && <StoryEditor />}
         {activeView === 'reader' && <StoryReader />}
         {activeView === 'profile' && <UserProfileView />}
@@ -111,6 +114,7 @@ const AppContent: React.FC = () => {
 
       <Footer onOpenInfoModal={openInfoModal} />
       <MobileBottomNav />
+      <ScrollToTopButton />
       <AuthModal />
       <MessagesModal />
       <InfoModal 

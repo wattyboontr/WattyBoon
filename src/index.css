@@ -79,6 +79,19 @@ input, textarea, [contenteditable="true"] {
   background: rgba(168, 85, 247, 0.5);
 }
 
+/* Cross-browser scrollbar hiding & smooth touch scrolling */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+  -webkit-overflow-scrolling: touch; /* Smooth touch scrolling on iOS Safari */
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }

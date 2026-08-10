@@ -67,8 +67,8 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
 
   const CATEGORY_GROUPS: CategoryGroup[] = [
     {
-      title: 'Kurgu & Macera Sınıfı',
-      description: 'Sürükleyici evrenler, efsaneler ve fantastik yolculuklar',
+      title: 'Kurgu, Efsane & Macera Sınıfı',
+      description: 'Sürükleyici evrenler, destansı yolculuklar ve mitolojik efsaneler',
       categories: [
         {
           name: 'Fantastik',
@@ -92,7 +92,7 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
           color: 'text-amber-600 dark:text-amber-400',
           bgColor: 'bg-amber-50 dark:bg-amber-950/50',
           borderColor: 'border-amber-200 dark:border-amber-800/60',
-          desc: 'Keşifler, tehlikeli görevler ve heyecan dolu aksiyon',
+          desc: 'Keşifler, tehlikeli görevler ve heyecan dolu yolculuklar',
         },
         {
           name: 'Genç Kurgu',
@@ -102,11 +102,27 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
           borderColor: 'border-emerald-200 dark:border-emerald-800/60',
           desc: 'Gençlik heyecanları, okul hayatı ve arkadaşlıklar',
         },
+        {
+          name: 'Hayran Kurgu',
+          icon: <Sparkles className="w-5 h-5" />,
+          color: 'text-pink-600 dark:text-pink-400',
+          bgColor: 'bg-pink-50 dark:bg-pink-950/50',
+          borderColor: 'border-pink-200 dark:border-pink-800/60',
+          desc: 'Sevilen evrenlerin hayran kalemiyle yeniden kurgulanışı',
+        },
+        {
+          name: 'Mitoloji',
+          icon: <ShieldAlert className="w-5 h-5" />,
+          color: 'text-amber-700 dark:text-amber-300',
+          bgColor: 'bg-amber-100/60 dark:bg-amber-950/40',
+          borderColor: 'border-amber-300 dark:border-amber-800/80',
+          desc: 'Tanrılar, antik efsaneler ve Kadim destanlar',
+        },
       ],
     },
     {
-      title: 'Duygu & Sırlar Sınıfı',
-      description: 'Kalbe dokunan hikayeler, tutkular ve sürpriz gizemler',
+      title: 'Duygu & Aşk Sınıfı',
+      description: 'Kalbe dokunan hikayeler, sevdalar ve derin duygusal anlatımlar',
       categories: [
         {
           name: 'Romantik',
@@ -117,14 +133,6 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
           desc: 'Aşk, duygu fırtınaları ve unutulmaz sevdalar',
         },
         {
-          name: 'Gizem / Gerilim',
-          icon: <Compass className="w-5 h-5" />,
-          color: 'text-slate-700 dark:text-slate-300',
-          bgColor: 'bg-slate-100 dark:bg-slate-800/80',
-          borderColor: 'border-slate-300 dark:border-slate-700',
-          desc: 'Sır perdesi, suç vakaları ve beklenmedik sonlar',
-        },
-        {
           name: 'Dram',
           icon: <Frown className="w-5 h-5" />,
           color: 'text-indigo-600 dark:text-indigo-400',
@@ -132,12 +140,14 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
           borderColor: 'border-indigo-200 dark:border-indigo-800/60',
           desc: 'Derin hayat hikayeleri, insan ilişkileri ve yüzleşmeler',
         },
-      ],
-    },
-    {
-      title: 'Sanat & Günlük Sınıfı',
-      description: 'Düşünsel yazılar, ilham veren dize ve dijital dünyalar',
-      categories: [
+        {
+          name: 'LGBTQ+',
+          icon: <Sparkles className="w-5 h-5" />,
+          color: 'text-violet-600 dark:text-violet-400',
+          bgColor: 'bg-violet-50 dark:bg-violet-950/50',
+          borderColor: 'border-violet-200 dark:border-violet-800/60',
+          desc: 'Çeşitlilik, aşk ve kimlik anlatıları',
+        },
         {
           name: 'Şiir',
           icon: <Feather className="w-5 h-5" />,
@@ -147,12 +157,88 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
           desc: 'Dize dize duygusal anlatımlar ve özgün şiirler',
         },
         {
+          name: 'Mizah',
+          icon: <Sparkles className="w-5 h-5" />,
+          color: 'text-yellow-600 dark:text-yellow-400',
+          bgColor: 'bg-yellow-50 dark:bg-yellow-950/50',
+          borderColor: 'border-yellow-200 dark:border-yellow-800/60',
+          desc: 'Eğlenceli hikayeler, komedi ve gülümseten satırlar',
+        },
+      ],
+    },
+    {
+      title: 'Gizem, Aksiyon & Suç Sınıfı',
+      description: 'Adrenalin dolu takipleri, sır perdeleri ve ürpertici gerilimler',
+      categories: [
+        {
+          name: 'Gizem / Gerilim',
+          icon: <Compass className="w-5 h-5" />,
+          color: 'text-slate-700 dark:text-slate-300',
+          bgColor: 'bg-slate-100 dark:bg-slate-800/80',
+          borderColor: 'border-slate-300 dark:border-slate-700',
+          desc: 'Sır perdesi, zeka oyunları ve beklenmedik sonlar',
+        },
+        {
+          name: 'Korku',
+          icon: <Flame className="w-5 h-5" />,
+          color: 'text-red-600 dark:text-red-400',
+          bgColor: 'bg-red-50 dark:bg-red-950/50',
+          borderColor: 'border-red-200 dark:border-red-800/60',
+          desc: 'Gerilim, karanlık varlıklar ve tüyler ürperten anlar',
+        },
+        {
+          name: 'Polisiye',
+          icon: <ShieldAlert className="w-5 h-5" />,
+          color: 'text-slate-800 dark:text-slate-200',
+          bgColor: 'bg-slate-200/70 dark:bg-slate-800',
+          borderColor: 'border-slate-400 dark:border-slate-600',
+          desc: 'Dedektif vakaları, suç soruşturmaları ve iz takibi',
+        },
+        {
+          name: 'Aksiyon',
+          icon: <Zap className="w-5 h-5" />,
+          color: 'text-orange-600 dark:text-orange-400',
+          bgColor: 'bg-orange-50 dark:bg-orange-950/50',
+          borderColor: 'border-orange-200 dark:border-orange-800/60',
+          desc: 'Hızlı tempolu sahneler, dövüşler ve amansız kapışmalar',
+        },
+        {
+          name: 'Psikoloji',
+          icon: <BookOpen className="w-5 h-5" />,
+          color: 'text-fuchsia-600 dark:text-fuchsia-400',
+          bgColor: 'bg-fuchsia-50 dark:bg-fuchsia-950/50',
+          borderColor: 'border-fuchsia-200 dark:border-fuchsia-800/60',
+          desc: 'Zihnin derinlikleri, insan psikolojisi ve kurgusal analizler',
+        },
+      ],
+    },
+    {
+      title: 'Tarih, Düşünce & Blog Sınıfı',
+      description: 'Geçmiş dönem kurguları, kişisel notlar ve felsefi okumalar',
+      categories: [
+        {
+          name: 'Tarihi',
+          icon: <BookOpen className="w-5 h-5" />,
+          color: 'text-amber-800 dark:text-amber-200',
+          bgColor: 'bg-amber-100/80 dark:bg-amber-900/40',
+          borderColor: 'border-amber-300 dark:border-amber-700',
+          desc: 'Eski çağlar, imparatorluklar ve tarihi dönem kurguları',
+        },
+        {
+          name: 'Felsefe',
+          icon: <Feather className="w-5 h-5" />,
+          color: 'text-purple-700 dark:text-purple-300',
+          bgColor: 'bg-purple-100/60 dark:bg-purple-950/60',
+          borderColor: 'border-purple-300 dark:border-purple-800',
+          desc: 'Varoluşsal sorgulamalar, düşünsel metinler ve denemeler',
+        },
+        {
           name: 'Kişisel Blog',
           icon: <BookOpen className="w-5 h-5" />,
           color: 'text-sky-600 dark:text-sky-400',
           bgColor: 'bg-sky-50 dark:bg-sky-950/50',
           borderColor: 'border-sky-200 dark:border-sky-800/60',
-          desc: 'Kişisel anılar, denemeler ve hayat gözlemleri',
+          desc: 'Kişisel anılar, denemeler ve günlük yaşam gözlemleri',
         },
         {
           name: 'Teknoloji',
@@ -160,7 +246,15 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
           color: 'text-cyan-600 dark:text-cyan-400',
           bgColor: 'bg-cyan-50 dark:bg-cyan-950/50',
           borderColor: 'border-cyan-200 dark:border-cyan-800/60',
-          desc: 'Yazılım, yapay zeka ve teknoloji analizleri',
+          desc: 'Yazılım, yapay zeka, gelecek ve teknoloji analizleri',
+        },
+        {
+          name: 'Genel',
+          icon: <Grid className="w-5 h-5" />,
+          color: 'text-slate-600 dark:text-slate-400',
+          bgColor: 'bg-slate-100 dark:bg-slate-800/50',
+          borderColor: 'border-slate-200 dark:border-slate-700',
+          desc: 'Her türden serbest metinler, hibrit kurgular ve hikayeler',
         },
       ],
     },

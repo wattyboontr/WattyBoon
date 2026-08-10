@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment } from '../types';
+import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply } from '../types';
 import { INITIAL_STORIES, INITIAL_USERS, INITIAL_NOTIFICATIONS, INITIAL_MESSAGES } from '../data/mockData';
 import { db } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
@@ -53,7 +53,56 @@ const syncParagraphCommentToFirestore = async (pcomm: ParagraphComment) => {
   }
 };
 
-export type ViewType = 'explore' | 'library' | 'editor' | 'profile' | 'reader' | 'notifications' | 'story-detail';
+const syncForumTopicToFirestore = async (topic: ForumTopic) => {
+  try {
+    await setDoc(doc(db, 'forumTopics', topic.id), topic, { merge: true });
+  } catch (err) {
+    console.error('Firestore syncForumTopic error:', err);
+  }
+};
+
+const INITIAL_FORUM_TOPICS: ForumTopic[] = [];
+
+const toggleLikeCommentInList = (comments: Comment[], commentId: string, userId: string): Comment[] => {
+  return comments.map((c) => {
+    if (c.id === commentId) {
+      const hasLiked = c.likedBy.includes(userId);
+      const newLikedBy = hasLiked ? c.likedBy.filter((id) => id !== userId) : [...c.likedBy, userId];
+      return {
+        ...c,
+        likedBy: newLikedBy,
+        likes: newLikedBy.length
+      };
+    }
+    if (c.replies && c.replies.length > 0) {
+      return {
+        ...c,
+        replies: toggleLikeCommentInList(c.replies, commentId, userId)
+      };
+    }
+    return c;
+  });
+};
+
+const addReplyToCommentInList = (comments: Comment[], parentCommentId: string, newReply: Comment): Comment[] => {
+  return comments.map((c) => {
+    if (c.id === parentCommentId) {
+      return {
+        ...c,
+        replies: [...(c.replies || []), newReply]
+      };
+    }
+    if (c.replies && c.replies.length > 0) {
+      return {
+        ...c,
+        replies: addReplyToCommentInList(c.replies, parentCommentId, newReply)
+      };
+    }
+    return c;
+  });
+};
+
+export type ViewType = 'explore' | 'library' | 'editor' | 'profile' | 'reader' | 'notifications' | 'story-detail' | 'forum';
 
 interface AppContextType {
   // Theme
@@ -103,7 +152,16 @@ interface AppContextType {
   toggleLikeStory: (storyId: string) => void;
   toggleLikeChapter: (storyId: string, chapterIndex: number) => void;
   addComment: (storyId: string, content: string) => void;
+  toggleLikeComment: (storyId: string, commentId: string) => void;
+  addReplyToComment: (storyId: string, parentCommentId: string, content: string) => void;
   incrementStoryReads: (storyId: string, chapterOrder: number) => void;
+
+  // Forum & Topluluk Tartışmaları
+  forumTopics: ForumTopic[];
+  addForumTopic: (title: string, category: ForumTopic['category'], content: string, tags?: string[]) => string;
+  addForumReply: (topicId: string, content: string) => void;
+  toggleLikeForumTopic: (topicId: string) => void;
+  toggleLikeForumReply: (topicId: string, replyId: string) => void;
 
   // Library
   toggleLibraryStory: (storyId: string, status?: 'reading' | 'want_to_read' | 'completed' | 'favorite') => void;
@@ -184,110 +242,212 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Users state
   const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}users`);
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}users`);
+      return saved ? JSON.parse(saved) : INITIAL_USERS;
+    } catch {
+      return INITIAL_USERS;
+    }
   });
 
   // Current logged in user (Default to empty/guest)
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
-    return saved !== null ? saved : '';
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
+      return saved !== null ? saved : '';
+    } catch {
+      return '';
+    }
   });
 
   const currentUser = currentUserId ? (users.find((u) => u.id === currentUserId) || null) : null;
 
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}users`, JSON.stringify(users));
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}users`, JSON.stringify(users));
+    } catch (e) {
+      console.warn('localStorage setItem users error:', e);
+    }
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}current_user_id`, currentUserId);
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}current_user_id`, currentUserId);
+    } catch (e) {
+      console.warn('localStorage setItem current_user_id error:', e);
+    }
   }, [currentUserId]);
 
   // Firestore Realtime Users Listener
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: User[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as User);
-        });
-        setUsers(list);
-      }
-    }, (err) => console.error('Firestore users snapshot error:', err));
-    return () => unsub();
+    try {
+      const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
+        if (snapshot && !snapshot.empty) {
+          const list: User[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.id) list.push(data as User);
+          });
+          if (list.length > 0) setUsers(list);
+        }
+      }, (err) => console.warn('Firestore users snapshot warning:', err));
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore users listener error:', e);
+    }
   }, []);
 
   // Stories state
   const [stories, setStories] = useState<Story[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}stories`);
-    return saved ? JSON.parse(saved) : INITIAL_STORIES;
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}stories`);
+      return saved ? JSON.parse(saved) : INITIAL_STORIES;
+    } catch {
+      return INITIAL_STORIES;
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}stories`, JSON.stringify(stories));
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}stories`, JSON.stringify(stories));
+    } catch (e) {
+      console.warn('localStorage setItem stories error:', e);
+    }
   }, [stories]);
 
   // Firestore Realtime Stories Listener
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'stories'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: Story[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as Story);
-        });
-        setStories(list);
-      }
-    }, (err) => console.error('Firestore stories snapshot error:', err));
-    return () => unsub();
+    try {
+      const unsub = onSnapshot(collection(db, 'stories'), (snapshot) => {
+        if (snapshot && !snapshot.empty) {
+          const list: Story[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.id) list.push(data as Story);
+          });
+          if (list.length > 0) setStories(list);
+        }
+      }, (err) => console.warn('Firestore stories snapshot warning:', err));
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore stories listener error:', e);
+    }
   }, []);
 
   // Notifications state
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}notifications`);
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}notifications`);
+      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    } catch {
+      return INITIAL_NOTIFICATIONS;
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}notifications`, JSON.stringify(notifications));
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}notifications`, JSON.stringify(notifications));
+    } catch (e) {
+      console.warn('localStorage setItem notifications error:', e);
+    }
   }, [notifications]);
 
   // Firestore Realtime Notifications Listener
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'notifications'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: AppNotification[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as AppNotification);
-        });
-        setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      }
-    }, (err) => console.error('Firestore notifications snapshot error:', err));
-    return () => unsub();
+    try {
+      const unsub = onSnapshot(collection(db, 'notifications'), (snapshot) => {
+        if (snapshot && !snapshot.empty) {
+          const list: AppNotification[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.id) list.push(data as AppNotification);
+          });
+          if (list.length > 0) setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        }
+      }, (err) => console.warn('Firestore notifications snapshot warning:', err));
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore notifications listener error:', e);
+    }
   }, []);
 
   // Messages state
   const [messages, setMessages] = useState<DirectMessage[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}messages`);
-    return saved ? JSON.parse(saved) : INITIAL_MESSAGES;
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}messages`);
+      return saved ? JSON.parse(saved) : INITIAL_MESSAGES;
+    } catch {
+      return INITIAL_MESSAGES;
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}messages`, JSON.stringify(messages));
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}messages`, JSON.stringify(messages));
+    } catch (e) {
+      console.warn('localStorage setItem messages error:', e);
+    }
   }, [messages]);
 
   // Firestore Realtime Messages Listener
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'messages'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list: DirectMessage[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as DirectMessage);
-        });
-        setMessages(list);
+    try {
+      const unsub = onSnapshot(collection(db, 'messages'), (snapshot) => {
+        if (snapshot && !snapshot.empty) {
+          const list: DirectMessage[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.id) list.push(data as DirectMessage);
+          });
+          if (list.length > 0) setMessages(list);
+        }
+      }, (err) => console.warn('Firestore messages snapshot warning:', err));
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore messages listener error:', e);
+    }
+  }, []);
+
+  // Forum Topics State
+  const [forumTopics, setForumTopics] = useState<ForumTopic[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}forum_topics`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Clean out legacy mock topics (ft_1, ft_2, ft_3)
+        return parsed.filter((t: ForumTopic) => !['ft_1', 'ft_2', 'ft_3'].includes(t.id));
       }
-    }, (err) => console.error('Firestore messages snapshot error:', err));
-    return () => unsub();
+      return INITIAL_FORUM_TOPICS;
+    } catch {
+      return INITIAL_FORUM_TOPICS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}forum_topics`, JSON.stringify(forumTopics));
+    } catch (e) {
+      console.warn('localStorage setItem forum_topics error:', e);
+    }
+  }, [forumTopics]);
+
+  // Firestore Realtime Forum Topics Listener
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'forumTopics'), (snapshot) => {
+        const list: ForumTopic[] = [];
+        if (snapshot && !snapshot.empty) {
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.id) list.push(data as ForumTopic);
+          });
+        }
+        setForumTopics(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }, (err) => console.warn('Firestore forumTopics snapshot warning:', err));
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore forumTopics listener error:', e);
+    }
   }, []);
 
   // Messaging UI State
@@ -837,6 +997,131 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const toggleLikeComment = (storyId: string, commentId: string) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setStories((prev) =>
+      prev.map((s) => {
+        if (s.id !== storyId) return s;
+        const updatedComments = toggleLikeCommentInList(s.comments, commentId, currentUser.id);
+        const updated = { ...s, comments: updatedComments };
+        syncStoryToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
+  const addReplyToComment = (storyId: string, parentCommentId: string, content: string) => {
+    if (!currentUser || !content.trim()) return;
+    const newReply: Comment = {
+      id: 'c_' + Date.now(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userUsername: currentUser.username,
+      userAvatar: currentUser.avatar,
+      content: content.trim(),
+      createdAt: new Date().toISOString(),
+      likes: 0,
+      likedBy: [],
+      replies: []
+    };
+    setStories((prev) =>
+      prev.map((s) => {
+        if (s.id !== storyId) return s;
+        const updatedComments = addReplyToCommentInList(s.comments, parentCommentId, newReply);
+        const updated = { ...s, comments: updatedComments };
+        syncStoryToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
+  // Forum Methods
+  const addForumTopic = (title: string, category: ForumTopic['category'], content: string, tags: string[] = []): string => {
+    if (!currentUser || !title.trim() || !content.trim()) return '';
+    const newTopic: ForumTopic = {
+      id: 'ft_' + Date.now(),
+      title: title.trim(),
+      content: content.trim(),
+      category,
+      authorId: currentUser.id,
+      authorName: currentUser.name,
+      authorUsername: currentUser.username,
+      authorAvatar: currentUser.avatar,
+      tags: (tags || []).map((t) => t.trim()).filter(Boolean),
+      createdAt: new Date().toISOString(),
+      likes: 0,
+      likedBy: [],
+      replies: []
+    };
+    setForumTopics((prev) => [newTopic, ...prev]);
+    syncForumTopicToFirestore(newTopic);
+    return newTopic.id;
+  };
+
+  const addForumReply = (topicId: string, content: string) => {
+    if (!currentUser || !content.trim()) return;
+    const newReply: ForumReply = {
+      id: 'fr_' + Date.now(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userUsername: currentUser.username,
+      userAvatar: currentUser.avatar,
+      content: content.trim(),
+      createdAt: new Date().toISOString(),
+      likes: 0,
+      likedBy: []
+    };
+    setForumTopics((prev) =>
+      prev.map((t) => {
+        if (t.id !== topicId) return t;
+        const updated = { ...t, replies: [...t.replies, newReply] };
+        syncForumTopicToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
+  const toggleLikeForumTopic = (topicId: string) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setForumTopics((prev) =>
+      prev.map((t) => {
+        if (t.id !== topicId) return t;
+        const hasLiked = t.likedBy.includes(currentUser.id);
+        const newLikedBy = hasLiked ? t.likedBy.filter((id) => id !== currentUser.id) : [...t.likedBy, currentUser.id];
+        const updated = { ...t, likedBy: newLikedBy, likes: newLikedBy.length };
+        syncForumTopicToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
+  const toggleLikeForumReply = (topicId: string, replyId: string) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setForumTopics((prev) =>
+      prev.map((t) => {
+        if (t.id !== topicId) return t;
+        const updatedReplies = t.replies.map((r) => {
+          if (r.id !== replyId) return r;
+          const hasLiked = r.likedBy.includes(currentUser.id);
+          const newLikedBy = hasLiked ? r.likedBy.filter((id) => id !== currentUser.id) : [...r.likedBy, currentUser.id];
+          return { ...r, likedBy: newLikedBy, likes: newLikedBy.length };
+        });
+        const updated = { ...t, replies: updatedReplies };
+        syncForumTopicToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
   const incrementStoryReads = (storyId: string, chapterIndex: number) => {
     setStories((prev) =>
       prev.map((s) => {
@@ -1007,7 +1292,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleLikeStory,
         toggleLikeChapter,
         addComment,
+        toggleLikeComment,
+        addReplyToComment,
         incrementStoryReads,
+
+        forumTopics,
+        addForumTopic,
+        addForumReply,
+        toggleLikeForumTopic,
+        toggleLikeForumReply,
 
         toggleLibraryStory,
         isStoryInLibrary,
