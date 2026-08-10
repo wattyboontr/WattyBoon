@@ -242,17 +242,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Open Category Popup Button */}
-            {onOpenCategoriesModal && (
-              <button
-                onClick={onOpenCategoriesModal}
-                className="flex items-center gap-2 px-4 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-purple-500/20 transition-all shrink-0"
-              >
-                <Grid className="w-4 h-4" />
-                <span>Kategoriler Rehberi</span>
-              </button>
-            )}
-
             {/* Filter Toggle Button */}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -292,16 +281,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
 
         {/* Category Pills Slider */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
-          {onOpenCategoriesModal && (
-            <button
-              onClick={onOpenCategoriesModal}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 hover:bg-purple-200 transition-all flex items-center gap-1.5 shrink-0"
-            >
-              <Grid className="w-3.5 h-3.5" />
-              <span>Tüm Kategoriler (Popup)</span>
-            </button>
-          )}
-
           {CATEGORIES.map((cat) => (
             <button
               key={cat}

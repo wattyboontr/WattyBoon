@@ -61,6 +61,22 @@ const syncForumTopicToFirestore = async (topic: ForumTopic) => {
   }
 };
 
+const deleteForumTopicFromFirestore = async (topicId: string) => {
+  try {
+    await deleteDoc(doc(db, 'forumTopics', topicId));
+  } catch (err) {
+    console.error('Firestore deleteForumTopic error:', err);
+  }
+};
+
+const deleteParagraphCommentFromFirestore = async (commentId: string) => {
+  try {
+    await deleteDoc(doc(db, 'paragraphComments', commentId));
+  } catch (err) {
+    console.error('Firestore deleteParagraphComment error:', err);
+  }
+};
+
 const INITIAL_FORUM_TOPICS: ForumTopic[] = [];
 
 const toggleLikeCommentInList = (comments: Comment[], commentId: string, userId: string): Comment[] => {
@@ -102,6 +118,15 @@ const addReplyToCommentInList = (comments: Comment[], parentCommentId: string, n
   });
 };
 
+const deleteCommentFromList = (comments: Comment[], commentId: string): Comment[] => {
+  return comments
+    .filter((c) => c.id !== commentId)
+    .map((c) => ({
+      ...c,
+      replies: c.replies ? deleteCommentFromList(c.replies, commentId) : []
+    }));
+};
+
 export type ViewType = 'explore' | 'library' | 'editor' | 'profile' | 'reader' | 'notifications' | 'story-detail' | 'forum';
 
 interface AppContextType {
@@ -132,6 +157,7 @@ interface AppContextType {
   paragraphComments: ParagraphComment[];
   addParagraphComment: (storyId: string, chapterIndex: number, paragraphIndex: number, content: string, selectedText?: string) => void;
   toggleLikeParagraphComment: (commentId: string) => void;
+  deleteParagraphComment: (commentId: string) => void;
 
   // Navigation / Active Views
   activeView: ViewType;
@@ -149,17 +175,21 @@ interface AppContextType {
   stories: Story[];
   saveStory: (storyData: Partial<Story>) => string;
   deleteStory: (storyId: string) => void;
+  deleteChapter: (storyId: string, chapterIndex: number) => void;
   toggleLikeStory: (storyId: string) => void;
   toggleLikeChapter: (storyId: string, chapterIndex: number) => void;
   addComment: (storyId: string, content: string) => void;
   toggleLikeComment: (storyId: string, commentId: string) => void;
   addReplyToComment: (storyId: string, parentCommentId: string, content: string) => void;
+  deleteComment: (storyId: string, commentId: string) => void;
   incrementStoryReads: (storyId: string, chapterOrder: number) => void;
 
   // Forum & Topluluk Tartışmaları
   forumTopics: ForumTopic[];
   addForumTopic: (title: string, category: ForumTopic['category'], content: string, tags?: string[]) => string;
+  deleteForumTopic: (topicId: string) => void;
   addForumReply: (topicId: string, content: string) => void;
+  deleteForumReply: (topicId: string, replyId: string) => void;
   toggleLikeForumTopic: (topicId: string) => void;
   toggleLikeForumReply: (topicId: string, replyId: string) => void;
 
@@ -298,14 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Stories state
-  const [stories, setStories] = useState<Story[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}stories`);
-      return saved ? JSON.parse(saved) : INITIAL_STORIES;
-    } catch {
-      return INITIAL_STORIES;
-    }
-  });
+  const [stories, setStories] = useState<Story[]>(() => []);
 
   useEffect(() => {
     try {
@@ -767,6 +790,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const deleteParagraphComment = (commentId: string) => {
+    if (!currentUser) return;
+    setParagraphComments((prev) => prev.filter((p) => p.id !== commentId));
+    deleteParagraphCommentFromFirestore(commentId);
+  };
+
   // Navigation helpers
   const openStoryDetail = (storyId: string) => {
     setActiveStoryId(storyId);
@@ -877,6 +906,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveStoryId(null);
       setActiveView('explore');
     }
+  };
+
+  const deleteChapter = (storyId: string, chapterIndex: number) => {
+    setStories((prev) =>
+      prev.map((s) => {
+        if (s.id !== storyId) return s;
+        const updatedChapters = s.chapters.filter((_, idx) => idx !== chapterIndex);
+        const updated = { ...s, chapters: updatedChapters };
+        syncStoryToFirestore(updated);
+        return updated;
+      })
+    );
   };
 
   const toggleLikeStory = (storyId: string) => {
@@ -1038,6 +1079,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const deleteComment = (storyId: string, commentId: string) => {
+    if (!currentUser) return;
+    setStories((prev) =>
+      prev.map((s) => {
+        if (s.id !== storyId) return s;
+        const updatedComments = deleteCommentFromList(s.comments, commentId);
+        const updated = { ...s, comments: updatedComments };
+        syncStoryToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
   // Forum Methods
   const addForumTopic = (title: string, category: ForumTopic['category'], content: string, tags: string[] = []): string => {
     if (!currentUser || !title.trim() || !content.trim()) return '';
@@ -1061,6 +1115,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newTopic.id;
   };
 
+  const deleteForumTopic = (topicId: string) => {
+    if (!currentUser) return;
+    setForumTopics((prev) => prev.filter((t) => t.id !== topicId));
+    deleteForumTopicFromFirestore(topicId);
+  };
+
   const addForumReply = (topicId: string, content: string) => {
     if (!currentUser || !content.trim()) return;
     const newReply: ForumReply = {
@@ -1078,6 +1138,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((t) => {
         if (t.id !== topicId) return t;
         const updated = { ...t, replies: [...t.replies, newReply] };
+        syncForumTopicToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
+  const deleteForumReply = (topicId: string, replyId: string) => {
+    if (!currentUser) return;
+    setForumTopics((prev) =>
+      prev.map((t) => {
+        if (t.id !== topicId) return t;
+        const updatedReplies = t.replies.filter((r) => r.id !== replyId);
+        const updated = { ...t, replies: updatedReplies };
         syncForumTopicToFirestore(updated);
         return updated;
       })
@@ -1274,6 +1347,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         paragraphComments,
         addParagraphComment,
         toggleLikeParagraphComment,
+        deleteParagraphComment,
 
         activeView,
         setActiveView,
@@ -1289,16 +1363,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stories,
         saveStory,
         deleteStory,
+        deleteChapter,
         toggleLikeStory,
         toggleLikeChapter,
         addComment,
         toggleLikeComment,
         addReplyToComment,
+        deleteComment,
         incrementStoryReads,
 
         forumTopics,
         addForumTopic,
+        deleteForumTopic,
         addForumReply,
+        deleteForumReply,
         toggleLikeForumTopic,
         toggleLikeForumReply,
 

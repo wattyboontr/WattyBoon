@@ -15,7 +15,8 @@ import {
   Clock, 
   Pin,
   TrendingUp,
-  Filter
+  Filter,
+  Trash2
 } from 'lucide-react';
 import { ForumTopic } from '../types';
 
@@ -32,7 +33,9 @@ export const ForumView: React.FC = () => {
   const { 
     forumTopics, 
     addForumTopic, 
+    deleteForumTopic,
     addForumReply, 
+    deleteForumReply,
     toggleLikeForumTopic, 
     toggleLikeForumReply, 
     currentUser,
@@ -246,6 +249,21 @@ export const ForumView: React.FC = () => {
                     <MessageCircle className="w-3.5 h-3.5 text-purple-500" />
                     <span>{topic.replies.length}</span>
                   </div>
+
+                  {currentUser && currentUser.id === topic.authorId && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`"${topic.title}" konusunu silmek istediğinize emin misiniz?`)) {
+                          deleteForumTopic(topic.id);
+                        }
+                      }}
+                      className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900 transition-all"
+                      title="Konuyu Sil"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -391,17 +409,35 @@ export const ForumView: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => toggleLikeForumTopic(currentActiveTopic.id)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
-                      currentUser && currentActiveTopic.likedBy.includes(currentUser.id)
-                        ? 'bg-rose-50 dark:bg-rose-950 text-rose-600 border-rose-200'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${currentUser && currentActiveTopic.likedBy.includes(currentUser.id) ? 'fill-current text-rose-500' : ''}`} />
-                    <span>{currentActiveTopic.likes} Beğeni</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleLikeForumTopic(currentActiveTopic.id)}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                        currentUser && currentActiveTopic.likedBy.includes(currentUser.id)
+                          ? 'bg-rose-50 dark:bg-rose-950 text-rose-600 border-rose-200'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <Heart className={`w-4 h-4 ${currentUser && currentActiveTopic.likedBy.includes(currentUser.id) ? 'fill-current text-rose-500' : ''}`} />
+                      <span>{currentActiveTopic.likes} Beğeni</span>
+                    </button>
+
+                    {currentUser && currentUser.id === currentActiveTopic.authorId && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`"${currentActiveTopic.title}" konusunu silmek istediğinize emin misiniz?`)) {
+                            deleteForumTopic(currentActiveTopic.id);
+                            setActiveTopic(null);
+                          }
+                        }}
+                        className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900 transition-all flex items-center gap-1 font-bold text-xs"
+                        title="Konuyu Sil"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Konuyu Sil</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-normal whitespace-pre-line border border-slate-100 dark:border-slate-800">
@@ -449,18 +485,21 @@ export const ForumView: React.FC = () => {
                   ) : (
                     currentActiveTopic.replies.map((reply) => {
                       const isReplyLiked = currentUser ? reply.likedBy?.includes(currentUser.id) : false;
+                      const replyAvatar = reply.userAvatar || (reply as any).authorAvatar;
+                      const replyName = reply.userName || (reply as any).authorName;
+                      const canDeleteReply = currentUser && (currentUser.id === reply.userId || currentUser.id === currentActiveTopic.authorId);
 
                       return (
                         <div key={reply.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80 flex items-start gap-3">
                           <img
-                            src={reply.authorAvatar}
-                            alt={reply.authorName}
+                            src={replyAvatar}
+                            alt={replyName}
                             className="w-8 h-8 rounded-full object-cover mt-0.5"
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                               <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                                {reply.authorName}
+                                {replyName}
                               </h5>
                               <span className="text-[10px] text-slate-400">
                                 {new Date(reply.createdAt).toLocaleDateString('tr-TR')}
@@ -471,7 +510,7 @@ export const ForumView: React.FC = () => {
                               {reply.content}
                             </p>
 
-                            <div className="mt-2 flex items-center gap-2">
+                            <div className="mt-2 flex items-center justify-between">
                               <button
                                 onClick={() => toggleLikeForumReply(currentActiveTopic.id, reply.id)}
                                 className={`flex items-center gap-1 text-[11px] font-semibold transition-colors ${
@@ -481,6 +520,21 @@ export const ForumView: React.FC = () => {
                                 <Heart className={`w-3.5 h-3.5 ${isReplyLiked ? 'fill-current text-rose-500' : ''}`} />
                                 <span>{reply.likes || 0}</span>
                               </button>
+
+                              {canDeleteReply && (
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm('Bu yanıtı silmek istediğinize emin misiniz?')) {
+                                      deleteForumReply(currentActiveTopic.id, reply.id);
+                                    }
+                                  }}
+                                  className="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                                  title="Yanıtı Sil"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Sil</span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

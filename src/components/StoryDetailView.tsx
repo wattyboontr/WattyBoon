@@ -19,9 +19,11 @@ import {
   Send,
   Calendar,
   ListPlus,
-  Flame
+  Flame,
+  Trash2
 } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
+import { GraphCommentWidget } from './GraphCommentWidget';
 
 export const StoryDetailView: React.FC = () => {
   const { 
@@ -38,6 +40,9 @@ export const StoryDetailView: React.FC = () => {
     addComment,
     toggleLikeComment,
     addReplyToComment,
+    deleteStory,
+    deleteChapter,
+    deleteComment,
     currentUser,
     toggleFollowUser,
     setSelectedTagFilter,
@@ -292,12 +297,26 @@ export const StoryDetailView: React.FC = () => {
               </button>
 
               {isAuthor && (
-                <button
-                  onClick={() => openStoryEditor(story.id)}
-                  className="py-3 px-4 rounded-2xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors flex items-center gap-1.5"
-                >
-                  <PenTool className="w-3.5 h-3.5" /> Düzenle
-                </button>
+                <>
+                  <button
+                    onClick={() => openStoryEditor(story.id)}
+                    className="py-3 px-4 rounded-2xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors flex items-center gap-1.5"
+                  >
+                    <PenTool className="w-3.5 h-3.5" /> Düzenle
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`"${story.title}" hikayesini tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) {
+                        deleteStory(story.id);
+                      }
+                    }}
+                    className="py-3 px-4 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-bold text-xs hover:bg-rose-200 dark:hover:bg-rose-900 transition-colors flex items-center gap-1.5"
+                    title="Hikayeyi Sil"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Sil
+                  </button>
+                </>
               )}
             </div>
 
@@ -399,6 +418,20 @@ export const StoryDetailView: React.FC = () => {
                   >
                     Bölümü Oku
                   </button>
+
+                  {isAuthor && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`"${chapter.title || `Bölüm ${index + 1}`}" bölümünü silmek istediğinize emin misiniz?`)) {
+                          deleteChapter(story.id, index);
+                        }
+                      }}
+                      className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900 transition-all"
+                      title="Bölümü Sil"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -410,51 +443,9 @@ export const StoryDetailView: React.FC = () => {
       <section className="space-y-4 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm">
         <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-          Yorumlar ({story.comments.length})
+          Yorumlar
         </h3>
-
-        {/* Comment Input */}
-        {currentUser ? (
-          <form onSubmit={handleAddComment} className="flex gap-2">
-            <input
-              type="text"
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Hikaye veya yazar hakkında düşüncelerinizi paylaşın..."
-              className="flex-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-            <button
-              type="submit"
-              className="px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-500/20 flex items-center gap-1.5"
-            >
-              <Send className="w-3.5 h-3.5" /> Gönder
-            </button>
-          </form>
-        ) : (
-          <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-xs text-purple-700 dark:text-purple-300 font-medium text-center">
-            Yorum yapabilmek için lütfen giriş yapın.
-          </div>
-        )}
-
-        {/* Comments List */}
-        <div className="space-y-3 pt-2">
-          {story.comments.length > 0 ? (
-            story.comments.map((comment) => (
-              <CommentItem 
-                key={comment.id} 
-                comment={comment} 
-                storyId={story.id} 
-                toggleLikeComment={toggleLikeComment} 
-                addReplyToComment={addReplyToComment} 
-                currentUser={currentUser} 
-              />
-            ))
-          ) : (
-            <p className="text-xs text-slate-400 text-center py-4">
-              Henüz bu hikayeye yorum yapılmadı. İlk yorumu siz yazın!
-            </p>
-          )}
-        </div>
+        <GraphCommentWidget uid={story.id} />
       </section>
 
       <AddToCustomListModal
@@ -470,16 +461,20 @@ export const StoryDetailView: React.FC = () => {
 interface CommentItemProps {
   comment: any;
   storyId: string;
+  storyAuthorId?: string;
   toggleLikeComment: (storyId: string, commentId: string) => void;
   addReplyToComment: (storyId: string, parentCommentId: string, content: string) => void;
+  deleteComment: (storyId: string, commentId: string) => void;
   currentUser: any;
 }
 
 const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   storyId,
+  storyAuthorId,
   toggleLikeComment,
   addReplyToComment,
+  deleteComment,
   currentUser
 }) => {
   const [isReplying, setIsReplying] = useState(false);
@@ -495,6 +490,8 @@ const CommentItem: React.FC<CommentItemProps> = ({
     setReplyText('');
     setIsReplying(false);
   };
+
+  const isOwnerOrStoryAuthor = currentUser && (currentUser.id === comment.userId || currentUser.id === storyAuthorId);
 
   return (
     <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80 space-y-2">
@@ -512,7 +509,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
             {comment.content}
           </p>
 
-          {/* Action Bar: Like & Reply */}
+          {/* Action Bar: Like & Reply & Delete */}
           <div className="flex items-center gap-4 mt-2 pt-1 text-[11px]">
             <button
               onClick={() => toggleLikeComment(storyId, comment.id)}
@@ -530,6 +527,21 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 className="text-purple-600 dark:text-purple-400 font-semibold hover:underline"
               >
                 Yanıtla
+              </button>
+            )}
+
+            {isOwnerOrStoryAuthor && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Bu yorumu silmek istediğinize emin misiniz?')) {
+                    deleteComment(storyId, comment.id);
+                  }
+                }}
+                className="text-rose-500 hover:text-rose-700 font-semibold flex items-center gap-1 transition-colors ml-auto"
+                title="Yorumu Sil"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sil</span>
               </button>
             )}
           </div>
@@ -564,8 +576,10 @@ const CommentItem: React.FC<CommentItemProps> = ({
               key={child.id}
               comment={child}
               storyId={storyId}
+              storyAuthorId={storyAuthorId}
               toggleLikeComment={toggleLikeComment}
               addReplyToComment={addReplyToComment}
+              deleteComment={deleteComment}
               currentUser={currentUser}
             />
           ))}

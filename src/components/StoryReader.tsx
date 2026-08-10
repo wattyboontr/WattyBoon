@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { FormattedContent } from './FormattedContent';
+import { GraphCommentWidget } from './GraphCommentWidget';
 import { 
   ArrowLeft, 
   BookOpen, 
@@ -27,7 +28,8 @@ import {
   Copy,
   MessageSquarePlus,
   Quote,
-  Info
+  Info,
+  Trash2
 } from 'lucide-react';
 
 export const StoryReader: React.FC = () => {
@@ -43,13 +45,15 @@ export const StoryReader: React.FC = () => {
     toggleLibraryStory, 
     isStoryInLibrary, 
     addComment, 
+    deleteComment,
     currentUser, 
     openAuthorProfile,
     isDarkMode,
     toggleDarkMode,
     paragraphComments,
     addParagraphComment,
-    toggleLikeParagraphComment
+    toggleLikeParagraphComment,
+    deleteParagraphComment
   } = useApp();
 
   const story = stories.find((s) => s.id === activeStoryId) || stories[0];
@@ -644,75 +648,14 @@ export const StoryReader: React.FC = () => {
         </div>
 
         {/* General Chapter Comments Section */}
-        <section className="pt-10 border-t border-purple-200 dark:border-purple-900/40 space-y-6">
+        <section className="pt-10 border-t border-purple-200 dark:border-purple-900/40 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              Genel Bölüm Yorumları ({story.comments.length})
+              Bölüm Yorumları
             </h3>
           </div>
-
-          {/* Comment Form Input */}
-          {currentUser ? (
-            <form onSubmit={handleCommentSubmit} className="flex gap-3">
-              <img src={currentUser.avatar} alt={currentUser.name} className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/30" />
-              <div className="flex-1 space-y-2">
-                <textarea
-                  rows={2}
-                  value={commentInput}
-                  onChange={(e) => setCommentInput(e.target.value)}
-                  placeholder="Bu bölüm hakkındaki genel düşünceleriniz neler? Yazarla ve okuyucularla paylaşın..."
-                  className="w-full p-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                />
-                <button
-                  type="submit"
-                  disabled={!commentInput.trim()}
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs disabled:opacity-40 flex items-center gap-1.5 ml-auto transition-all"
-                >
-                  <Send className="w-3.5 h-3.5" /> Yorum Yap
-                </button>
-              </div>
-            </form>
-          ) : (
-            <p className="text-xs text-slate-400 text-center py-3 bg-slate-100 dark:bg-slate-900 rounded-xl">
-              Yorum yapabilmek için lütfen giriş yapın.
-            </p>
-          )}
-
-          {/* Comments List */}
-          <div className="space-y-4">
-            {story.comments.length > 0 ? (
-              story.comments.map((comment) => (
-                <div key={comment.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <img src={comment.userAvatar} alt={comment.userName} className="w-8 h-8 rounded-full object-cover" />
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                          {comment.userName}
-                          {comment.userId === story.authorId && (
-                            <span className="px-1.5 py-0.2 bg-purple-600 text-white text-[9px] font-bold rounded-full">YAZAR</span>
-                          )}
-                        </h4>
-                        <span className="text-[10px] text-slate-400">@{comment.userUsername}</span>
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-slate-400">
-                      {new Date(comment.createdAt).toLocaleDateString('tr-TR')}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans pl-10">
-                    {comment.content}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs text-slate-400 italic text-center py-6">
-                Henüz yorum yapılmamış. İlk yorumu yapan siz olun!
-              </p>
-            )}
-          </div>
+          <GraphCommentWidget uid={`${story.id}_ch${activeChapterIndex}`} />
         </section>
 
       </main>
@@ -783,15 +726,31 @@ export const StoryReader: React.FC = () => {
                             </div>
                           </div>
 
-                          <button
-                            onClick={() => toggleLikeParagraphComment(pComm.id)}
-                            className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-bold transition-all ${
-                              isLiked ? 'bg-purple-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                            }`}
-                          >
-                            <ThumbsUp className="w-3 h-3" />
-                            <span>{pComm.likes}</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleLikeParagraphComment(pComm.id)}
+                              className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-bold transition-all ${
+                                isLiked ? 'bg-purple-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                              }`}
+                            >
+                              <ThumbsUp className="w-3 h-3" />
+                              <span>{pComm.likes}</span>
+                            </button>
+
+                            {currentUser && (currentUser.id === pComm.userId || currentUser.id === story.authorId) && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('Bu yorumu silmek istediğinize emin misiniz?')) {
+                                    deleteParagraphComment(pComm.id);
+                                  }
+                                }}
+                                className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                                title="Yorumu Sil"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <p className="text-slate-700 dark:text-slate-200 leading-relaxed pl-9">

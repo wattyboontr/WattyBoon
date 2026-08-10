@@ -64,7 +64,7 @@ const PRESET_COVERS = [
 ];
 
 export const StoryEditor: React.FC = () => {
-  const { editingStoryId, stories, saveStory, setActiveView, openStoryReader } = useApp();
+  const { editingStoryId, stories, saveStory, deleteStory, setActiveView, openStoryReader } = useApp();
 
   const existingStory = stories.find((s) => s.id === editingStoryId);
 
@@ -278,6 +278,20 @@ export const StoryEditor: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 self-end sm:self-auto">
+          {existingStory && (
+            <button
+              onClick={() => {
+                if (window.confirm(`"${existingStory.title}" hikayesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) {
+                  deleteStory(existingStory.id);
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-rose-100 dark:bg-rose-950/80 hover:bg-rose-200 text-rose-700 dark:text-rose-300 font-bold text-xs transition-all"
+              title="Hikayeyi Sil"
+            >
+              <Trash2 className="w-4 h-4" />
+              Sil
+            </button>
+          )}
           <button
             onClick={() => handleSave('private')}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all"
