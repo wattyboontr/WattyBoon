@@ -238,7 +238,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}dark_mode`);
-    return saved ? JSON.parse(saved) : true; // Default to sleek dark mode
+    return saved ? JSON.parse(saved) : false; // Default to daytime (light) mode
   });
 
   useEffect(() => {
