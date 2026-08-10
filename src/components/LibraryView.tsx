@@ -68,7 +68,7 @@ export const LibraryView: React.FC = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-3">
             <Bookmark className="w-7 h-7 text-purple-600 dark:text-purple-400" />
-            Kütüphanem & Okuma Listem
+            Kütüphanem
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Okuduğunuz hikayeleri düzenleyin ve kendi taslaklarınızı yönetin.

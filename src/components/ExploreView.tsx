@@ -20,7 +20,22 @@ import {
   Play,
   CheckCircle2,
   ShieldAlert,
-  PenTool
+  PenTool,
+  Wand2,
+  Rocket,
+  Heart,
+  Map as MapIcon,
+  Zap,
+  Crown,
+  Frown,
+  Feather,
+  Smile,
+  Compass,
+  Shield,
+  Moon,
+  Brain,
+  Lightbulb,
+  Cpu
 } from 'lucide-react';
 
 const CATEGORIES: (Category | 'Tümü')[] = [
@@ -41,10 +56,44 @@ const CATEGORIES: (Category | 'Tümü')[] = [
   'Teknoloji',
   'Hayran Kurgu',
   'Macera',
-  'LGBTQ',
+  'LGBTQ+',
+  'Mitoloji',
+  'Mizah',
+  'Felsefe',
   'Psikoloji',
   'Tarihi',
 ];
+
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case 'Tümü': return <Sparkles className="w-3.5 h-3.5 shrink-0" />;
+    case 'Fantastik': return <Wand2 className="w-3.5 h-3.5 shrink-0" />;
+    case 'Bilim Kurgu': return <Rocket className="w-3.5 h-3.5 shrink-0" />;
+    case 'Romantik': return <Heart className="w-3.5 h-3.5 shrink-0" />;
+    case 'Macera': return <MapIcon className="w-3.5 h-3.5 shrink-0" />;
+    case 'Genç Kurgu': return <Zap className="w-3.5 h-3.5 shrink-0" />;
+    case 'Hayran Kurgu': return <Star className="w-3.5 h-3.5 shrink-0" />;
+    case 'Mitoloji': return <Crown className="w-3.5 h-3.5 shrink-0" />;
+    case 'Dram': return <Frown className="w-3.5 h-3.5 shrink-0" />;
+    case 'LGBTQ+':
+    case 'LGBTQ': return <Sparkles className="w-3.5 h-3.5 shrink-0" />;
+    case 'Şiir': return <Feather className="w-3.5 h-3.5 shrink-0" />;
+    case 'Mizah': return <Smile className="w-3.5 h-3.5 shrink-0" />;
+    case 'Gizem / Gerilim':
+    case 'Gizem': return <Compass className="w-3.5 h-3.5 shrink-0" />;
+    case 'Gerilim':
+    case 'Korku': return <Flame className="w-3.5 h-3.5 shrink-0" />;
+    case 'Polisiye': return <Shield className="w-3.5 h-3.5 shrink-0" />;
+    case 'Paranormal': return <Moon className="w-3.5 h-3.5 shrink-0" />;
+    case 'Aksiyon': return <Zap className="w-3.5 h-3.5 shrink-0" />;
+    case 'Psikoloji': return <Brain className="w-3.5 h-3.5 shrink-0" />;
+    case 'Tarihi': return <BookOpen className="w-3.5 h-3.5 shrink-0" />;
+    case 'Felsefe': return <Lightbulb className="w-3.5 h-3.5 shrink-0" />;
+    case 'Kişisel Blog': return <PenTool className="w-3.5 h-3.5 shrink-0" />;
+    case 'Teknoloji': return <Cpu className="w-3.5 h-3.5 shrink-0" />;
+    default: return <Grid className="w-3.5 h-3.5 shrink-0" />;
+  }
+};
 
 interface ExploreViewProps {
   onOpenCategoriesModal?: () => void;
@@ -288,13 +337,14 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
                 setSelectedCategoryFilter(cat);
                 setFilters((prev) => ({ ...prev, category: cat }));
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                 filters.category === cat
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20'
                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800/80 hover:border-purple-300'
               }`}
             >
-              {cat}
+              {getCategoryIcon(cat)}
+              <span>{cat}</span>
             </button>
           ))}
         </div>

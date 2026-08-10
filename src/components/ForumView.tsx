@@ -106,7 +106,7 @@ export const ForumView: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5" /> Okur & Yazar Kulübü
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-extrabold tracking-tight">
-              Topluluk Tartışma & Forum Alanı
+              Topluluk
             </h1>
             <p className="text-xs sm:text-sm text-purple-200/80 leading-relaxed">
               En sevdiğin serileri tartış, teorilerini paylaş, öneri iste veya diğer okuyucularla tanışıp sohbet et!
