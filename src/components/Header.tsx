@@ -129,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
             }`}
           >
             <MessageSquare className="w-4 h-4" />
-            Tartışma & Forum
+            Tartışma
           </button>
 
           {/* Hikaye Yaz & Hikayeni Düzelt Dropdown */}
