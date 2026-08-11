@@ -149,13 +149,13 @@ export const AuthModal: React.FC = () => {
           {activeTab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-slate-500 dark:text-slate-400 font-bold mb-1">E-posta Adresi</label>
+                <label className="block text-slate-500 dark:text-slate-400 font-bold mb-1">E-posta veya Kullanıcı Adı</label>
                 <div className="relative">
                   <input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ornek@novella.app"
+                    placeholder="ornek@mail.com veya kullanıcı adı"
                     required
                     className="w-full p-3 pl-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />

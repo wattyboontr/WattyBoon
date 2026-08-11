@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply } from '../types';
 import { INITIAL_STORIES, INITIAL_USERS, INITIAL_NOTIFICATIONS, INITIAL_MESSAGES } from '../data/mockData';
 import { db, auth } from '../lib/firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, getDoc } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -441,9 +441,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Firebase Auth State Listener
   useEffect(() => {
     try {
-      const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-          setCurrentUserId((prev) => prev || firebaseUser.uid);
+          const fbUid = firebaseUser.uid;
+          const fbEmail = firebaseUser.email?.toLowerCase() || '';
+
+          // Fetch user document from Firestore directly
+          let matched: User | null = null;
+          try {
+            const uSnap = await getDoc(doc(db, 'users', fbUid));
+            if (uSnap.exists()) {
+              matched = uSnap.data() as User;
+            }
+          } catch (e) {
+            console.warn('Firestore onAuthStateChanged getDoc error:', e);
+          }
+
+          if (matched) {
+            setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), matched!]);
+            setCurrentUserId(fbUid);
+          } else {
+            setUsers((prev) => {
+              const found = prev.find((u) => u.id === fbUid || (fbEmail && u.email?.toLowerCase() === fbEmail));
+              if (found) {
+                if (found.id !== fbUid) {
+                  const updated = { ...found, id: fbUid };
+                  syncUserToFirestore(updated);
+                  return [...prev.filter((u) => u.id !== found.id && u.id !== fbUid), updated];
+                }
+                return prev;
+              }
+              // Create user document in Firestore if not found
+              const newUser: User = {
+                id: fbUid,
+                name: firebaseUser.displayName || (fbEmail ? fbEmail.split('@')[0] : 'Kullanıcı'),
+                username: fbEmail ? fbEmail.split('@')[0] : `user_${fbUid.slice(0, 6)}`,
+                email: fbEmail,
+                avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUid}`,
+                bio: 'WattyBoon yazarı.',
+                followers: [],
+                following: [],
+                joinedDate: new Date().toISOString().split('T')[0],
+                library: [],
+              };
+              syncUserToFirestore(newUser);
+              return [...prev.filter((u) => u.id !== fbUid), newUser];
+            });
+            setCurrentUserId(fbUid);
+          }
         }
       });
       return () => unsubAuth();
@@ -863,30 +908,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Auth actions
-  const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) return { success: false, error: 'Lütfen e-posta adresinizi giriniz.' };
+  const login = async (emailOrUsername: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+    const inputClean = emailOrUsername.trim();
+    if (!inputClean) return { success: false, error: 'Lütfen e-posta adresinizi veya kullanıcı adınızı giriniz.' };
+
+    let targetEmail = inputClean.toLowerCase();
+
+    // Support login via username (without @)
+    if (!inputClean.includes('@')) {
+      const cleanInputUser = inputClean.startsWith('@') ? inputClean.slice(1) : inputClean;
+      const matchedUser = users.find((u) => u.username?.toLowerCase() === cleanInputUser.toLowerCase());
+      if (matchedUser && matchedUser.email) {
+        targetEmail = matchedUser.email.toLowerCase();
+      } else {
+        try {
+          const qSnap = await getDocs(collection(db, 'users'));
+          if (qSnap && !qSnap.empty) {
+            qSnap.forEach((docSnap) => {
+              const uData = docSnap.data() as User;
+              if (uData.username?.toLowerCase() === cleanInputUser.toLowerCase() && uData.email) {
+                targetEmail = uData.email.toLowerCase();
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('Firestore username lookup error:', e);
+        }
+      }
+    }
 
     if (password) {
       try {
-        const userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+        const userCred = await signInWithEmailAndPassword(auth, targetEmail, password);
         const fbUid = userCred.user.uid;
-        const found = users.find((u) => u.id === fbUid || u.email.toLowerCase() === trimmedEmail);
-        if (found) {
-          if (found.id !== fbUid) {
-            const updatedUser = { ...found, id: fbUid };
-            setUsers((prev) => [...prev.filter((u) => u.id !== found.id && u.id !== fbUid), updatedUser]);
-            await syncUserToFirestore(updatedUser);
+
+        // Find existing user profile in local state or Firestore
+        let found = users.find((u) => u.id === fbUid || u.email?.toLowerCase() === targetEmail);
+
+        if (!found) {
+          try {
+            const userDocSnap = await getDoc(doc(db, 'users', fbUid));
+            if (userDocSnap.exists()) {
+              found = userDocSnap.data() as User;
+            }
+          } catch (e) {
+            console.warn('Firestore getDoc user error:', e);
           }
+        }
+
+        if (found) {
+          const updatedUser: User = { ...found, id: fbUid };
+          setUsers((prev) => [...prev.filter((u) => u.id !== found!.id && u.id !== fbUid), updatedUser]);
+          await syncUserToFirestore(updatedUser);
           setCurrentUserId(fbUid);
           return { success: true };
         } else {
           const newUser: User = {
             id: fbUid,
-            name: userCred.user.displayName || trimmedEmail.split('@')[0],
-            username: trimmedEmail.split('@')[0],
-            email: trimmedEmail,
-            avatar: userCred.user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${trimmedEmail.split('@')[0]}`,
+            name: userCred.user.displayName || targetEmail.split('@')[0],
+            username: targetEmail.split('@')[0],
+            email: targetEmail,
+            avatar: userCred.user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${targetEmail.split('@')[0]}`,
             bio: 'WattyBoon yazarı.',
             followers: [],
             following: [],
@@ -901,16 +983,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (err: any) {
         console.warn('Firebase login attempt error:', err);
         if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-          return { success: false, error: 'Hatalı e-posta veya şifre girdiniz.' };
+          return { success: false, error: 'Hatalı e-posta/kullanıcı adı veya şifre girdiniz.' };
         }
         if (err.code === 'auth/invalid-email') {
           return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
         }
-        if (err.code === 'auth/network-request-failed') {
-          return { success: false, error: 'İnternet bağlantısı hatası. Lütfen tekrar deneyiniz.' };
+        if (err.code === 'auth/user-disabled') {
+          return { success: false, error: 'Bu hesap engellenmiş veya dondurulmuştur.' };
         }
-        // Fallback email lookup
-        const found = users.find((u) => u.email.toLowerCase() === trimmedEmail);
+        if (err.code === 'auth/network-request-failed') {
+          return { success: false, error: 'İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edip tekrar deneyiniz.' };
+        }
+        // Fallback email/username lookup
+        const found = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
         if (found) {
           setCurrentUserId(found.id);
           return { success: true };
@@ -918,12 +1003,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol ediniz.' };
       }
     } else {
-      const found = users.find((u) => u.email.toLowerCase() === trimmedEmail);
+      const found = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
       if (found) {
         setCurrentUserId(found.id);
         return { success: true };
       }
-      return { success: false, error: 'Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı.' };
+      return { success: false, error: 'Bu bilgilere ait kullanıcı bulunamadı.' };
     }
   };
 
@@ -1153,44 +1238,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Total Site Data Wipe Effect (Deletes all users, stories, messages, forum topics, notifications, and comments from Firestore & LocalStorage)
-  useEffect(() => {
-    const isDataWiped = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}site_data_wipe_executed_v1`);
-    if (!isDataWiped) {
-      const collectionsToWipe = ['users', 'stories', 'messages', 'forumTopics', 'notifications', 'paragraphComments'];
-      collectionsToWipe.forEach((colName) => {
-        getDocs(collection(db, colName))
-          .then((snapshot) => {
-            snapshot.forEach((docSnap) => {
-              deleteDoc(doc(db, colName, docSnap.id)).catch((err) => console.warn(`Wipe ${colName} doc error:`, err));
-            });
-          })
-          .catch((err) => console.warn(`Wipe ${colName} getDocs error:`, err));
-      });
 
-      try {
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}users`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}stories`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}messages`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}forum_topics`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}notifications`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
-      } catch (e) {
-        console.warn('LocalStorage wipe error:', e);
-      }
-
-      setUsers([]);
-      setStories([]);
-      setMessages([]);
-      setForumTopics([]);
-      setNotifications([]);
-      setParagraphComments([]);
-      setCurrentUserId('');
-
-      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}site_data_wipe_executed_v1`, 'true');
-    }
-  }, []);
 
   const addParagraphComment = (storyId: string, chapterIndex: number, paragraphIndex: number, content: string, selectedText?: string) => {
     if (!currentUser || !content.trim()) return;
