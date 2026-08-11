@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply } from '../types';
 import { INITIAL_STORIES, INITIAL_USERS, INITIAL_NOTIFICATIONS, INITIAL_MESSAGES } from '../data/mockData';
 import { db, auth } from '../lib/firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -278,6 +278,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isNsfwEnabled]);
 
   const toggleNsfw = () => setIsNsfwEnabled((prev) => !prev);
+
+  // Total Site Data Wipe Effect (Deletes all users, stories, messages, forum topics, notifications, and comments from Firestore & LocalStorage)
+  useEffect(() => {
+    const isDataWiped = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}site_data_wipe_executed_v1`);
+    if (!isDataWiped) {
+      const collectionsToWipe = ['users', 'stories', 'messages', 'forumTopics', 'notifications', 'paragraphComments'];
+      collectionsToWipe.forEach((colName) => {
+        getDocs(collection(db, colName))
+          .then((snapshot) => {
+            snapshot.forEach((docSnap) => {
+              deleteDoc(doc(db, colName, docSnap.id)).catch((err) => console.warn(`Wipe ${colName} doc error:`, err));
+            });
+          })
+          .catch((err) => console.warn(`Wipe ${colName} getDocs error:`, err));
+      });
+
+      try {
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}users`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}stories`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}messages`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}forum_topics`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}notifications`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
+      } catch (e) {
+        console.warn('LocalStorage wipe error:', e);
+      }
+
+      setUsers([]);
+      setStories([]);
+      setMessages([]);
+      setForumTopics([]);
+      setNotifications([]);
+      setParagraphComments([]);
+      setCurrentUserId('');
+
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}site_data_wipe_executed_v1`, 'true');
+    }
+  }, []);
 
   // Global Category & Tag Filter State
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<Category | 'Tümü'>('Tümü');
@@ -1071,41 +1110,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [paragraphComments, setParagraphComments] = useState<ParagraphComment[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`);
     if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: 'pcomm_1',
-        storyId: 'story_1',
-        chapterIndex: 0,
-        paragraphIndex: 0,
-        userId: 'user_2',
-        userName: 'Elif Şafak Demir',
-        userUsername: 'elif_yazar',
-        userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
-        content: 'Bu giriş cümlesi inanılmaz etkileyici! Tüylerim diken diken oldu.',
-        createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-        likes: 4,
-        likedBy: ['user_1'],
-      },
-      {
-        id: 'pcomm_2',
-        storyId: 'story_1',
-        chapterIndex: 0,
-        paragraphIndex: 0,
-        userId: 'user_3',
-        userName: 'Mert Korhan',
-        userUsername: 'mert_k',
-        userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300',
-        content: 'Aynen katılıyorum, atmosfer çizimi harika.',
-        createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-        likes: 2,
-        likedBy: [],
-      }
-    ];
+    return [];
   });
 
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`, JSON.stringify(paragraphComments));
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`, JSON.stringify(paragraphComments));
+    } catch (e) {
+      console.warn('localStorage setItem paragraph_comments error:', e);
+    }
   }, [paragraphComments]);
+
+  // Firestore Realtime Paragraph Comments Listener
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'paragraphComments'), (snapshot) => {
+        const list: ParagraphComment[] = [];
+        if (snapshot && !snapshot.empty) {
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.id) list.push(data as ParagraphComment);
+          });
+        }
+        setParagraphComments(list);
+      }, (err) => console.warn('Firestore paragraphComments snapshot warning:', err));
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore paragraphComments listener error:', e);
+    }
+  }, []);
 
   const addParagraphComment = (storyId: string, chapterIndex: number, paragraphIndex: number, content: string, selectedText?: string) => {
     if (!currentUser || !content.trim()) return;
