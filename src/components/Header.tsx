@@ -27,7 +27,8 @@ import {
   Mail,
   Grid,
   ShieldAlert,
-  Edit3
+  Edit3,
+  Home
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -83,6 +84,20 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
             }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeView === 'explore' && selectedCategoryFilter === 'Tümü'
+                ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-300 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+            }`}
+          >
+            <Home className="w-4 h-4" />
+            Ana Sayfa
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveView('explore');
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeView === 'explore' && selectedCategoryFilter !== 'Tümü'
                 ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-300 shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}

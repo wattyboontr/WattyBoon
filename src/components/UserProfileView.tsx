@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { StoryCard } from './StoryCard';
 import { 
@@ -24,7 +24,9 @@ import {
   AlertTriangle,
   X,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  LogIn,
+  Compass
 } from 'lucide-react';
 
 export const UserProfileView: React.FC = () => {
@@ -38,8 +40,47 @@ export const UserProfileView: React.FC = () => {
     openStoryEditor,
     openMessagingWithUser,
     changePassword,
-    deleteAccount
+    deleteAccount,
+    setIsAuthModalOpen,
+    setActiveView,
+    autoOpenProfileSettings,
+    setAutoOpenProfileSettings
   } = useApp();
+
+  // If user is not logged in and not viewing a specific other author's profile, render guest login callout
+  if (!currentUser && (!activeAuthorId || activeAuthorId === '')) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center animate-fade-in">
+        <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-900/60 shadow-2xl space-y-6">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-lg shadow-purple-500/10">
+            <UserIcon className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              Profilinizi Görüntülemek İçin Giriş Yapın
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed font-medium">
+              WattyBoon topluluğuna katılarak kendi özgün hikayelerinizi yayınlayabilir, beğendiğiniz yazarları takip edebilir ve kişisel kütüphanenizi yönetebilirsiniz.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" /> Giriş Yap / Ücretsiz Kaydol
+            </button>
+            <button
+              onClick={() => setActiveView('explore')}
+              className="px-6 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Compass className="w-4 h-4" /> Keşfet'e Dön
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const targetUserId = activeAuthorId || currentUser?.id || users[0].id;
   const author = users.find((u) => u.id === targetUserId) || currentUser || users[0];
@@ -54,6 +95,14 @@ export const UserProfileView: React.FC = () => {
   const [bioInput, setBioInput] = useState(author.bio);
   const [avatarInput, setAvatarInput] = useState(author.avatar);
   const [coverInput, setCoverInput] = useState(author.coverUrl || '');
+
+  // Auto-open settings if redirected right after registration
+  useEffect(() => {
+    if (autoOpenProfileSettings && isSelf) {
+      setIsSettingsOpen(true);
+      setAutoOpenProfileSettings(false);
+    }
+  }, [autoOpenProfileSettings, isSelf, setAutoOpenProfileSettings]);
 
   // Password & Security State
   const [newPassword, setNewPassword] = useState('');

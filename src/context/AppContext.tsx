@@ -236,9 +236,11 @@ interface AppContextType {
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
 
-  // Modals
+  // Modals & Settings Auto-Open
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
+  autoOpenProfileSettings: boolean;
+  setAutoOpenProfileSettings: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -762,12 +764,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // View & Navigation State
-  const [activeView, setActiveView] = useState<ViewType>('explore');
+  const [activeView, setActiveViewRaw] = useState<ViewType>('explore');
   const [activeStoryId, setActiveStoryId] = useState<string | null>('story_1');
   const [activeChapterIndex, setActiveChapterIndex] = useState<number>(0);
   const [activeAuthorId, setActiveAuthorId] = useState<string | null>(null);
   const [editingStoryId, setEditingStoryId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [autoOpenProfileSettings, setAutoOpenProfileSettings] = useState<boolean>(false);
+
+  // Helper to push history state for browser back/forward buttons
+  const pushStateToHistory = (
+    view: ViewType,
+    storyId: string | null = activeStoryId,
+    chapterIndex: number = activeChapterIndex,
+    authorId: string | null = activeAuthorId,
+    editStoryId: string | null = editingStoryId
+  ) => {
+    try {
+      window.history.pushState(
+        {
+          activeView: view,
+          activeStoryId: storyId,
+          activeChapterIndex: chapterIndex,
+          activeAuthorId: authorId,
+          editingStoryId: editStoryId,
+        },
+        ''
+      );
+    } catch (e) {
+      console.warn('History pushState error:', e);
+    }
+  };
+
+  const setActiveView = (view: ViewType) => {
+    setActiveViewRaw(view);
+    pushStateToHistory(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Browser back/forward navigation listener (popstate)
+  useEffect(() => {
+    try {
+      window.history.replaceState(
+        {
+          activeView,
+          activeStoryId,
+          activeChapterIndex,
+          activeAuthorId,
+          editingStoryId,
+        },
+        ''
+      );
+    } catch (e) {
+      console.warn('History replaceState error:', e);
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.activeView) {
+        setActiveViewRaw(e.state.activeView);
+        if (e.state.activeStoryId !== undefined) setActiveStoryId(e.state.activeStoryId);
+        if (e.state.activeChapterIndex !== undefined) setActiveChapterIndex(e.state.activeChapterIndex);
+        if (e.state.activeAuthorId !== undefined) setActiveAuthorId(e.state.activeAuthorId);
+        if (e.state.editingStoryId !== undefined) setEditingStoryId(e.state.editingStoryId);
+      } else {
+        setActiveViewRaw('explore');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Helper to add notification
   const sendNotification = (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => {
@@ -871,6 +937,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUsers((prev) => [...prev.filter((u) => u.id !== newId), newUser]);
     await syncUserToFirestore(newUser);
     setCurrentUserId(newId);
+    setActiveAuthorId(newId);
+    setActiveViewRaw('profile');
+    pushStateToHistory('profile', activeStoryId, activeChapterIndex, newId);
+    setAutoOpenProfileSettings(true);
     return { success: true };
   };
 
@@ -1089,14 +1159,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Navigation helpers
   const openStoryDetail = (storyId: string) => {
     setActiveStoryId(storyId);
-    setActiveView('story-detail');
+    setActiveViewRaw('story-detail');
+    pushStateToHistory('story-detail', storyId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openStoryReader = (storyId: string, chapterIndex: number = 0) => {
     setActiveStoryId(storyId);
     setActiveChapterIndex(chapterIndex);
-    setActiveView('reader');
+    setActiveViewRaw('reader');
+    pushStateToHistory('reader', storyId, chapterIndex);
     incrementStoryReads(storyId, chapterIndex);
     updateReadingProgress(storyId, chapterIndex);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1104,7 +1176,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const openAuthorProfile = (authorId: string) => {
     setActiveAuthorId(authorId);
-    setActiveView('profile');
+    setActiveViewRaw('profile');
+    pushStateToHistory('profile', activeStoryId, activeChapterIndex, authorId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const openStoryEditor = (storyId: string | null = null) => {
@@ -1113,7 +1187,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     setEditingStoryId(storyId);
-    setActiveView('editor');
+    setActiveViewRaw('editor');
+    pushStateToHistory('editor', storyId, activeChapterIndex, activeAuthorId, storyId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Story actions
@@ -1701,6 +1777,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         isAuthModalOpen,
         setIsAuthModalOpen,
+        autoOpenProfileSettings,
+        setAutoOpenProfileSettings,
       }}
     >
       {children}
