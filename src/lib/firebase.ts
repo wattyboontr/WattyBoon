@@ -18,20 +18,8 @@ const firebaseConfig = {
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore using configured databaseId or fallback
-const getFirestoreInstance = () => {
-  const customDbId = config.firestoreDatabaseId;
-  if (customDbId && customDbId !== '(default)') {
-    try {
-      return getFirestore(app, customDbId);
-    } catch (err) {
-      console.warn(`Firestore initialization with custom databaseId '${customDbId}' failed, falling back:`, err);
-    }
-  }
-  return getFirestore(app);
-};
-
-export const db = getFirestoreInstance();
+// Initialize Firestore using configured databaseId
+export const db = getFirestore(app, config.firestoreDatabaseId || '(default)');
 export const auth = getAuth(app);
 
 // Safe Analytics Initialization for Web
