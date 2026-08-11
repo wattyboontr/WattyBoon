@@ -16,7 +16,15 @@ import {
   MessageCircle,
   Camera,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Settings,
+  Shield,
+  KeyRound,
+  Trash2,
+  AlertTriangle,
+  X,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export const UserProfileView: React.FC = () => {
@@ -28,7 +36,9 @@ export const UserProfileView: React.FC = () => {
     toggleFollowUser, 
     updateProfile, 
     openStoryEditor,
-    openMessagingWithUser
+    openMessagingWithUser,
+    changePassword,
+    deleteAccount
   } = useApp();
 
   const targetUserId = activeAuthorId || currentUser?.id || users[0].id;
@@ -39,10 +49,21 @@ export const UserProfileView: React.FC = () => {
 
   // Edit Bio & Images state
   const [isEditingBio, setIsEditingBio] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [nameInput, setNameInput] = useState(author.name);
   const [bioInput, setBioInput] = useState(author.bio);
   const [avatarInput, setAvatarInput] = useState(author.avatar);
   const [coverInput, setCoverInput] = useState(author.coverUrl || '');
+
+  // Password & Security State
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isSubmittingPass, setIsSubmittingPass] = useState(false);
+
+  // Delete Account Confirmation Modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter public stories or public+private if viewing own profile
   const authorStories = stories.filter((s) => {
@@ -57,6 +78,36 @@ export const UserProfileView: React.FC = () => {
   const handleSaveBio = () => {
     updateProfile(bioInput, nameInput, avatarInput, coverInput);
     setIsEditingBio(false);
+  };
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordMsg({ type: 'error', text: 'Yeni şifreniz en az 6 karakterden oluşmalıdır.' });
+      return;
+    }
+    setIsSubmittingPass(true);
+    setPasswordMsg(null);
+
+    const res = await changePassword(newPassword);
+    setIsSubmittingPass(false);
+
+    if (res.success) {
+      setPasswordMsg({ type: 'success', text: res.message || 'Şifreniz başarıyla değiştirildi.' });
+      setNewPassword('');
+    } else {
+      setPasswordMsg({ type: 'error', text: res.error || 'Şifre değiştirilirken bir hata oluştu.' });
+    }
+  };
+
+  const handleDeleteAccountSubmit = async () => {
+    if (deleteConfirmInput.trim().toUpperCase() !== 'SİL') {
+      return;
+    }
+    setIsDeleting(true);
+    await deleteAccount();
+    setIsDeleting(false);
+    setShowDeleteModal(false);
   };
 
   const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,7 +174,7 @@ export const UserProfileView: React.FC = () => {
               className="absolute top-4 right-4 px-3.5 py-2 rounded-2xl bg-black/60 hover:bg-black/80 backdrop-blur-md text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg transition-all border border-white/20 hover:scale-105"
             >
               <Camera className="w-4 h-4 text-purple-400" />
-              <span>Kapak Resmini Değiştir (Bilgisayar/Telefon)</span>
+              <span>Kapak Resmini Değiştir</span>
             </label>
           )}
         </div>
@@ -146,7 +197,7 @@ export const UserProfileView: React.FC = () => {
                     className="absolute inset-0 rounded-3xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold cursor-pointer gap-1"
                   >
                     <Upload className="w-5 h-5 text-purple-300" />
-                    <span>Profil Resmi Yükle</span>
+                    <span>Resim Yükle</span>
                   </label>
                 )}
                 {isSelf && (
@@ -173,15 +224,38 @@ export const UserProfileView: React.FC = () => {
               </div>
             </div>
 
-            {/* Follow / Edit / Message Buttons */}
-            <div className="flex items-center gap-3 self-center sm:self-auto">
+            {/* Follow / Edit / Settings Buttons */}
+            <div className="flex items-center gap-3 self-center sm:self-auto flex-wrap">
               {isSelf ? (
-                <button
-                  onClick={() => setIsEditingBio(!isEditingBio)}
-                  className="px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-2 hover:bg-purple-50 dark:hover:bg-purple-950/60"
-                >
-                  <Edit3 className="w-4 h-4 text-purple-600" /> Profilini Düzenle
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setIsEditingBio(!isEditingBio);
+                      if (isSettingsOpen) setIsSettingsOpen(false);
+                    }}
+                    className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all ${
+                      isEditingBio 
+                        ? 'bg-purple-600 text-white' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/60'
+                    }`}
+                  >
+                    <Edit3 className="w-4 h-4 text-purple-500" /> Profilini Düzenle
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsSettingsOpen(!isSettingsOpen);
+                      if (isEditingBio) setIsEditingBio(false);
+                    }}
+                    className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all ${
+                      isSettingsOpen 
+                        ? 'bg-purple-600 text-white' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/60'
+                    }`}
+                  >
+                    <Settings className="w-4 h-4 text-purple-500" /> Hesabı Yönet & Güvenlik
+                  </button>
+                </>
               ) : (
                 <>
                   <button
@@ -217,9 +291,11 @@ export const UserProfileView: React.FC = () => {
           {/* Edit Profile Panel */}
           {isEditingBio && (
             <div className="mb-6 p-5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 space-y-4 animate-fade-in text-xs">
-              <h4 className="font-bold text-purple-900 dark:text-purple-200 text-sm">Profil Bilgilerini Güncelle</h4>
+              <h4 className="font-bold text-purple-900 dark:text-purple-200 text-sm flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-purple-600" /> Profil Bilgilerini Güncelle
+              </h4>
               
-              {/* File Upload Section for Mobile / Desktop */}
+              {/* File Upload Section */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-purple-100 dark:border-purple-900/50">
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -286,10 +362,138 @@ export const UserProfileView: React.FC = () => {
 
               <button
                 onClick={handleSaveBio}
-                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl flex items-center gap-1.5 shadow-md"
+                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Check className="w-4 h-4" /> Değişiklikleri Kaydet
               </button>
+            </div>
+          )}
+
+          {/* Account Settings & Security Panel */}
+          {isSettingsOpen && (
+            <div className="mb-6 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-6 animate-fade-in text-xs">
+              
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  Hesap Ayarları ve Güvenlik
+                </h4>
+                <button 
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 1. Change Password Section */}
+              <div className="space-y-3 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-purple-600" />
+                  Şifre Değiştir
+                </h5>
+                <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                  Firebase Authentication ile korunan hesabınızın şifresini yeni ve güçlü bir şifreyle güncelleyebilirsiniz.
+                </p>
+
+                {passwordMsg && (
+                  <div className={`p-3 rounded-xl text-xs font-medium border flex items-center gap-2 ${
+                    passwordMsg.type === 'success' 
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900'
+                      : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-900'
+                  }`}>
+                    {passwordMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />}
+                    <span>{passwordMsg.text}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleChangePasswordSubmit} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Yeni Şifreniz (En az 6 karakter)"
+                    minLength={6}
+                    required
+                    className="flex-1 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSubmittingPass}
+                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-md shrink-0 cursor-pointer"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    {isSubmittingPass ? 'Güncelleniyor...' : 'Şifremi Değiştir'}
+                  </button>
+                </form>
+              </div>
+
+              {/* 2. Delete Account Section (Danger Zone) */}
+              <div className="space-y-3 p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50">
+                <h5 className="font-bold text-rose-900 dark:text-rose-200 flex items-center gap-2">
+                  <Trash2 className="w-4 h-4 text-rose-600" />
+                  Kritik Bölge: Hesabı Sil
+                </h5>
+                <p className="text-rose-700 dark:text-rose-300/80 text-[11px] leading-relaxed">
+                  Hesabınızı sildiğiniz takdirde tüm yayınlanmış ve taslak hikayeleriniz, profiliniz, kütüphaneniz ve yorumlarınız sistemden ve Firebase veritabanından kalıcı olarak silinecektir.
+                </p>
+
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" /> Hesabımı Kalıcı Olarak Sil
+                </button>
+              </div>
+
+            </div>
+          )}
+
+          {/* Delete Account Modal Dialog */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-rose-200 dark:border-rose-900/60 shadow-2xl w-full max-w-md p-6 space-y-4">
+                
+                <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+                  <div className="p-3 rounded-2xl bg-rose-100 dark:bg-rose-950">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">Hesabınızı Silmek İstediğinize Emin Misiniz?</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Bu işlem kesinlikle geri alınamaz.</p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-xs text-rose-800 dark:text-rose-200 leading-relaxed">
+                  Onaylamak için lütfen aşağıdaki kutucuğa büyük harflerle <strong className="font-black text-rose-600 dark:text-rose-400">SİL</strong> yazınız.
+                </div>
+
+                <input
+                  type="text"
+                  value={deleteConfirmInput}
+                  onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                  placeholder="SİL"
+                  className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-bold text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => { setShowDeleteModal(false); setDeleteConfirmInput(''); }}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
+                  >
+                    Vazgeç
+                  </button>
+                  <button
+                    onClick={handleDeleteAccountSubmit}
+                    disabled={deleteConfirmInput.trim().toUpperCase() !== 'SİL' || isDeleting}
+                    className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? 'Siliniyor...' : 'Hesabı Sil'}
+                  </button>
+                </div>
+
+              </div>
             </div>
           )}
 
@@ -358,3 +562,4 @@ export const UserProfileView: React.FC = () => {
     </div>
   );
 };
+

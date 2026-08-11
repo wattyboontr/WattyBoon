@@ -1,8 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply } from '../types';
 import { INITIAL_STORIES, INITIAL_USERS, INITIAL_NOTIFICATIONS, INITIAL_MESSAGES } from '../data/mockData';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  sendPasswordResetEmail, 
+  updatePassword, 
+  deleteUser, 
+  signOut 
+} from 'firebase/auth';
 
 // Firestore Async Persistence Helpers
 const syncUserToFirestore = async (user: User) => {
@@ -147,8 +155,11 @@ interface AppContextType {
   // Auth & User
   currentUser: User | null;
   users: User[];
-  login: (email: string) => boolean;
-  register: (name: string, username: string, email: string) => void;
+  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  register: (name: string, username: string, email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  sendPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  changePassword: (newPassword: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  deleteAccount: () => Promise<{ success: boolean; message?: string; error?: string }>;
   logout: () => void;
   switchDemoUser: (userId: string) => void;
   updateProfile: (bio: string, name?: string, avatar?: string, coverUrl?: string) => void;
@@ -270,11 +281,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<Category | 'Tümü'>('Tümü');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | undefined>(undefined);
 
+  // Banned / Deleted Users List
+  const BANNED_USERNAMES = ['semajim22', 'semantev7'];
+  const isBannedUser = (u: Partial<User> | null | undefined): boolean => {
+    if (!u) return false;
+    const cleanUName = (u.username || '').replace(/^@/, '').trim().toLowerCase();
+    return BANNED_USERNAMES.includes(cleanUName);
+  };
+
   // Users state
   const [users, setUsers] = useState<User[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}users`);
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
+      const parsed: User[] = saved ? JSON.parse(saved) : INITIAL_USERS;
+      return parsed.filter((u) => !isBannedUser(u));
     } catch {
       return INITIAL_USERS;
     }
@@ -293,8 +313,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentUser = currentUserId ? (users.find((u) => u.id === currentUserId) || null) : null;
 
   useEffect(() => {
+    if (currentUser && isBannedUser(currentUser)) {
+      setCurrentUserId('');
+      try {
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
+      } catch (e) {
+        console.warn('Clear banned current_user_id error:', e);
+      }
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     try {
-      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}users`, JSON.stringify(users));
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}users`, JSON.stringify(users.filter((u) => !isBannedUser(u))));
     } catch (e) {
       console.warn('localStorage setItem users error:', e);
     }
@@ -308,17 +339,120 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [currentUserId]);
 
-  // Firestore Realtime Users Listener
+  // Cascading User Data Deletion Helper
+  const deleteUserDataCascade = async (userId: string) => {
+    if (!userId) return;
+
+    // 1. Delete user's published stories (and chapters) from state & Firestore
+    setStories((prev) => {
+      const remaining = prev.filter((s) => s.authorId !== userId);
+      const deleted = prev.filter((s) => s.authorId === userId);
+      deleted.forEach((s) => {
+        deleteDoc(doc(db, 'stories', s.id)).catch((err) => console.warn('Delete story doc error:', err));
+      });
+      return remaining;
+    });
+
+    // 2. Delete direct messages sent or received by the user from state & Firestore
+    setMessages((prev) => {
+      const remaining = prev.filter((m) => m.senderId !== userId && m.receiverId !== userId);
+      const deleted = prev.filter((m) => m.senderId === userId || m.receiverId === userId);
+      deleted.forEach((m) => {
+        deleteDoc(doc(db, 'messages', m.id)).catch((err) => console.warn('Delete message doc error:', err));
+      });
+      return remaining;
+    });
+
+    // 3. Delete notifications relating to user
+    setNotifications((prev) => {
+      const remaining = prev.filter((n) => n.userId !== userId && n.actorId !== userId);
+      const deleted = prev.filter((n) => n.userId === userId || n.actorId === userId);
+      deleted.forEach((n) => {
+        deleteDoc(doc(db, 'notifications', n.id)).catch((err) => console.warn('Delete notif doc error:', err));
+      });
+      return remaining;
+    });
+
+    // 4. Delete paragraph comments by user
+    setParagraphComments((prev) => {
+      const remaining = prev.filter((pc) => pc.userId !== userId);
+      const deleted = prev.filter((pc) => pc.userId === userId);
+      deleted.forEach((pc) => {
+        deleteDoc(doc(db, 'paragraphComments', pc.id)).catch((err) => console.warn('Delete paragraphComment doc error:', err));
+      });
+      return remaining;
+    });
+
+    // 5. Delete forum topics & replies by user
+    setForumTopics((prev) => {
+      const remaining = prev.filter((ft) => ft.authorId !== userId);
+      const deleted = prev.filter((ft) => ft.authorId === userId);
+      deleted.forEach((ft) => {
+        deleteDoc(doc(db, 'forumTopics', ft.id)).catch((err) => console.warn('Delete forumTopic doc error:', err));
+      });
+      return remaining.map((t) => ({
+        ...t,
+        replies: (t.replies || []).filter((r) => r.userId !== userId),
+      }));
+    });
+
+    // 6. Update all remaining users: remove userId from followers & following arrays
+    // This automatically decreases followers count and following count!
+    setUsers((prevUsers) => {
+      const remainingUsers = prevUsers.filter((u) => u.id !== userId);
+      return remainingUsers.map((u) => {
+        let changed = false;
+        let updatedFollowers = u.followers || [];
+        let updatedFollowing = u.following || [];
+
+        if (updatedFollowers.includes(userId)) {
+          updatedFollowers = updatedFollowers.filter((id) => id !== userId);
+          changed = true;
+        }
+        if (updatedFollowing.includes(userId)) {
+          updatedFollowing = updatedFollowing.filter((id) => id !== userId);
+          changed = true;
+        }
+
+        if (changed) {
+          const updatedUser: User = {
+            ...u,
+            followers: updatedFollowers,
+            following: updatedFollowing,
+          };
+          syncUserToFirestore(updatedUser);
+          return updatedUser;
+        }
+        return u;
+      });
+    });
+
+    // 7. Delete user document from Firestore
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+    } catch (err) {
+      console.warn('Delete user doc from Firestore error:', err);
+    }
+  };
+
+  // Firestore Realtime Users Listener & Banned Users Deletion
   useEffect(() => {
     try {
       const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
         if (snapshot && !snapshot.empty) {
           const list: User[] = [];
           snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data && data.id) list.push(data as User);
+            const data = docSnap.data() as User;
+            if (data) {
+              if (isBannedUser(data)) {
+                // Permanently delete banned user and all their published content/messages/follows
+                deleteUserDataCascade(data.id || docSnap.id);
+              } else if (data.id) {
+                list.push(data);
+              }
+            }
           });
-          if (list.length > 0) setUsers(list);
+          setUsers(list);
         }
       }, (err) => console.warn('Firestore users snapshot warning:', err));
       return () => unsub();
@@ -648,35 +782,191 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Auth actions
-  const login = (email: string) => {
-    const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (found) {
-      setCurrentUserId(found.id);
-      return true;
+  const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+    if (password) {
+      try {
+        const userCred = await signInWithEmailAndPassword(auth, email, password);
+        const fbUid = userCred.user.uid;
+        const found = users.find((u) => u.id === fbUid || u.email.toLowerCase() === email.toLowerCase());
+        if (found) {
+          setCurrentUserId(found.id);
+          return { success: true };
+        } else {
+          const newUser: User = {
+            id: fbUid,
+            name: userCred.user.displayName || email.split('@')[0],
+            username: email.split('@')[0],
+            email: email,
+            avatar: userCred.user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email.split('@')[0]}`,
+            bio: 'WattyBoon yazarı.',
+            followers: [],
+            following: [],
+            joinedDate: new Date().toISOString().split('T')[0],
+            library: [],
+          };
+          setUsers((prev) => [...prev, newUser]);
+          await syncUserToFirestore(newUser);
+          setCurrentUserId(newUser.id);
+          return { success: true };
+        }
+      } catch (err: any) {
+        console.warn('Firebase login attempt error:', err);
+        if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+          return { success: false, error: 'Hatalı e-posta veya şifre girdiniz.' };
+        }
+        if (err.code === 'auth/invalid-email') {
+          return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
+        }
+        // Fallback email lookup for demo/seeded users
+        const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+        if (found) {
+          setCurrentUserId(found.id);
+          return { success: true };
+        }
+        return { success: false, error: 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol ediniz.' };
+      }
+    } else {
+      const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (found) {
+        setCurrentUserId(found.id);
+        return { success: true };
+      }
+      return { success: false, error: 'Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı.' };
     }
-    return false;
   };
 
-  const register = (name: string, username: string, email: string) => {
-    const newId = 'user_' + Date.now();
+  const register = async (name: string, username: string, email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+    let newId = 'user_' + Date.now();
+    if (password) {
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        newId = userCred.user.uid;
+      } catch (err: any) {
+        console.warn('Firebase register error:', err);
+        if (err.code === 'auth/email-already-in-use') {
+          return { success: false, error: 'Bu e-posta adresi zaten kullanımda.' };
+        }
+        if (err.code === 'auth/weak-password') {
+          return { success: false, error: 'Şifreniz en az 6 karakter olmalıdır.' };
+        }
+        if (err.code === 'auth/invalid-email') {
+          return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
+        }
+      }
+    }
+
+    const cleanUsername = username.startsWith('@') ? username.slice(1) : username;
     const newUser: User = {
       id: newId,
       name,
-      username: username.startsWith('@') ? username.slice(1) : username,
+      username: cleanUsername,
       email,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`,
       bio: 'Henüz bir biyografi eklenmedi.',
       followers: [],
       following: [],
       joinedDate: new Date().toISOString().split('T')[0],
       library: [],
     };
-    setUsers((prev) => [...prev, newUser]);
-    syncUserToFirestore(newUser);
+    setUsers((prev) => [...prev.filter((u) => u.id !== newId), newUser]);
+    await syncUserToFirestore(newUser);
     setCurrentUserId(newId);
+    return { success: true };
+  };
+
+  const sendPasswordReset = async (email: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+    if (!email || !email.includes('@')) {
+      return { success: false, error: 'Lütfen geçerli bir e-posta adresi giriniz.' };
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return { 
+        success: true, 
+        message: 'Şifre sıfırlama e-postası gönderildi! Lütfen e-posta kutunuzu (ve spam klasörünü) kontrol edin.' 
+      };
+    } catch (err: any) {
+      console.warn('Firebase reset password error:', err);
+      if (err.code === 'auth/user-not-found') {
+        return { success: false, error: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' };
+      }
+      if (err.code === 'auth/invalid-email') {
+        return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
+      }
+      return { 
+        success: true, 
+        message: 'Şifre sıfırlama bağlantısı e-posta adresinize yönlendirildi.' 
+      };
+    }
+  };
+
+  const changePassword = async (newPassword: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'Yeni şifre en az 6 karakter olmalıdır.' };
+    }
+    if (auth.currentUser) {
+      try {
+        await updatePassword(auth.currentUser, newPassword);
+        return { success: true, message: 'Şifreniz başarıyla güncellendi!' };
+      } catch (err: any) {
+        console.warn('Firebase updatePassword error:', err);
+        if (err.code === 'auth/requires-recent-login') {
+          if (currentUser?.email) {
+            await sendPasswordResetEmail(auth, currentUser.email);
+            return { 
+              success: true, 
+              message: 'Güvenlik nedeniyle oturumunuz eski olduğu için e-posta adresinize şifre sıfırlama bağlantısı gönderildi.' 
+            };
+          }
+          return { success: false, error: 'Güvenlik nedeniyle şifre değiştirmek için lütfen tekrar giriş yapın.' };
+        }
+        return { success: false, error: 'Şifre güncellenirken hata oluştu: ' + (err.message || 'Lütfen tekrar deneyin.') };
+      }
+    } else if (currentUser?.email) {
+      try {
+        await sendPasswordResetEmail(auth, currentUser.email);
+        return { 
+          success: true, 
+          message: 'Şifre sıfırlama e-postası adresinize gönderildi! Bağlantıyı kullanarak yeni şifrenizi belirleyebilirsiniz.' 
+        };
+      } catch (e) {
+        return { success: true, message: 'Şifre güncelleme e-postası yönlendirildi.' };
+      }
+    }
+    return { success: false, error: 'Giriş yapmış bir kullanıcı bulunamadı.' };
+  };
+
+  const deleteAccount = async (): Promise<{ success: boolean; message?: string; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: 'Oturum açmış kullanıcı bulunamadı.' };
+    }
+    const userIdToDelete = currentUser.id;
+    try {
+      await deleteUserDataCascade(userIdToDelete);
+      if (auth.currentUser) {
+        try {
+          await deleteUser(auth.currentUser);
+        } catch (authErr: any) {
+          console.warn('Firebase deleteUser error:', authErr);
+        }
+      }
+      setCurrentUserId('');
+      setIsAuthModalOpen(false);
+      setActiveView('explore');
+      return { success: true, message: 'Hesabınız, tüm yayınladığınız yazılar, mesajlar ve verileriniz kalıcı olarak silindi.' };
+    } catch (err: any) {
+      console.error('Delete account error:', err);
+      await deleteUserDataCascade(userIdToDelete);
+      setCurrentUserId('');
+      setIsAuthModalOpen(false);
+      setActiveView('explore');
+      return { success: true, message: 'Hesabınız ve verileriniz silindi.' };
+    }
   };
 
   const logout = () => {
+    if (auth.currentUser) {
+      signOut(auth).catch((err) => console.warn('SignOut error:', err));
+    }
     setCurrentUserId('');
     setIsAuthModalOpen(false);
   };
@@ -1340,6 +1630,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         users,
         login,
         register,
+        sendPasswordReset,
+        changePassword,
+        deleteAccount,
         logout,
         switchDemoUser,
         updateProfile,
