@@ -9,7 +9,8 @@ import {
   sendPasswordResetEmail, 
   updatePassword, 
   deleteUser, 
-  signOut 
+  signOut,
+  onAuthStateChanged
 } from 'firebase/auth';
 
 // Firestore Async Persistence Helpers
@@ -476,6 +477,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Firebase Auth State Listener
+  useEffect(() => {
+    try {
+      const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+          setCurrentUserId((prev) => prev || firebaseUser.uid);
+        }
+      });
+      return () => unsubAuth();
+    } catch (e) {
+      console.warn('Firebase onAuthStateChanged listener error:', e);
+    }
+  }, []);
+
   // Firestore Realtime Users Listener & Banned Users Deletion
   useEffect(() => {
     try {
@@ -888,21 +903,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Auth actions
   const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) return { success: false, error: 'Lütfen e-posta adresinizi giriniz.' };
+
     if (password) {
       try {
-        const userCred = await signInWithEmailAndPassword(auth, email, password);
+        const userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
         const fbUid = userCred.user.uid;
-        const found = users.find((u) => u.id === fbUid || u.email.toLowerCase() === email.toLowerCase());
+        const found = users.find((u) => u.id === fbUid || u.email.toLowerCase() === trimmedEmail);
         if (found) {
-          setCurrentUserId(found.id);
+          if (found.id !== fbUid) {
+            const updatedUser = { ...found, id: fbUid };
+            setUsers((prev) => [...prev.filter((u) => u.id !== found.id && u.id !== fbUid), updatedUser]);
+            await syncUserToFirestore(updatedUser);
+          }
+          setCurrentUserId(fbUid);
           return { success: true };
         } else {
           const newUser: User = {
             id: fbUid,
-            name: userCred.user.displayName || email.split('@')[0],
-            username: email.split('@')[0],
-            email: email,
-            avatar: userCred.user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email.split('@')[0]}`,
+            name: userCred.user.displayName || trimmedEmail.split('@')[0],
+            username: trimmedEmail.split('@')[0],
+            email: trimmedEmail,
+            avatar: userCred.user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${trimmedEmail.split('@')[0]}`,
             bio: 'WattyBoon yazarı.',
             followers: [],
             following: [],
@@ -911,7 +934,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
           setUsers((prev) => [...prev, newUser]);
           await syncUserToFirestore(newUser);
-          setCurrentUserId(newUser.id);
+          setCurrentUserId(fbUid);
           return { success: true };
         }
       } catch (err: any) {
@@ -922,8 +945,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (err.code === 'auth/invalid-email') {
           return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
         }
-        // Fallback email lookup for demo/seeded users
-        const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+        if (err.code === 'auth/network-request-failed') {
+          return { success: false, error: 'İnternet bağlantısı hatası. Lütfen tekrar deneyiniz.' };
+        }
+        // Fallback email lookup
+        const found = users.find((u) => u.email.toLowerCase() === trimmedEmail);
         if (found) {
           setCurrentUserId(found.id);
           return { success: true };
@@ -931,7 +957,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol ediniz.' };
       }
     } else {
-      const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      const found = users.find((u) => u.email.toLowerCase() === trimmedEmail);
       if (found) {
         setCurrentUserId(found.id);
         return { success: true };
@@ -941,10 +967,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const register = async (name: string, username: string, email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim().startsWith('@') ? username.trim().slice(1) : username.trim();
+
+    if (!trimmedName || !cleanUsername || !trimmedEmail) {
+      return { success: false, error: 'Lütfen tüm zorunlu alanları doldurunuz.' };
+    }
+
+    if (password && password.length < 6) {
+      return { success: false, error: 'Şifreniz en az 6 karakter olmalıdır.' };
+    }
+
+    // Check duplicate username or email in existing users list
+    const existingUsername = users.find((u) => u.username?.toLowerCase() === cleanUsername.toLowerCase());
+    if (existingUsername) {
+      return { success: false, error: 'Bu kullanıcı adı başka bir üye tarafından zaten kullanılıyor.' };
+    }
+
+    const existingEmail = users.find((u) => u.email?.toLowerCase() === trimmedEmail);
+    if (existingEmail) {
+      return { success: false, error: 'Bu e-posta adresi ile kayıtlı bir hesap zaten var.' };
+    }
+
     let newId = 'user_' + Date.now();
     if (password) {
       try {
-        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        const userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
         newId = userCred.user.uid;
       } catch (err: any) {
         console.warn('Firebase register error:', err);
@@ -957,15 +1006,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (err.code === 'auth/invalid-email') {
           return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
         }
+        if (err.code === 'auth/network-request-failed') {
+          return { success: false, error: 'İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edip tekrar deneyiniz.' };
+        }
+        return { success: false, error: err.message || 'Kayıt olunurken bir hata oluştu. Lütfen bilgilerinizi kontrol edin.' };
       }
     }
 
-    const cleanUsername = username.startsWith('@') ? username.slice(1) : username;
     const newUser: User = {
       id: newId,
-      name,
+      name: trimmedName,
       username: cleanUsername,
-      email,
+      email: trimmedEmail,
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`,
       bio: 'Henüz bir biyografi eklenmedi.',
       followers: [],
