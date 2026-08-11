@@ -280,45 +280,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleNsfw = () => setIsNsfwEnabled((prev) => !prev);
 
-  // Total Site Data Wipe Effect (Deletes all users, stories, messages, forum topics, notifications, and comments from Firestore & LocalStorage)
-  useEffect(() => {
-    const isDataWiped = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}site_data_wipe_executed_v1`);
-    if (!isDataWiped) {
-      const collectionsToWipe = ['users', 'stories', 'messages', 'forumTopics', 'notifications', 'paragraphComments'];
-      collectionsToWipe.forEach((colName) => {
-        getDocs(collection(db, colName))
-          .then((snapshot) => {
-            snapshot.forEach((docSnap) => {
-              deleteDoc(doc(db, colName, docSnap.id)).catch((err) => console.warn(`Wipe ${colName} doc error:`, err));
-            });
-          })
-          .catch((err) => console.warn(`Wipe ${colName} getDocs error:`, err));
-      });
-
-      try {
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}users`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}stories`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}messages`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}forum_topics`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}notifications`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`);
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
-      } catch (e) {
-        console.warn('LocalStorage wipe error:', e);
-      }
-
-      setUsers([]);
-      setStories([]);
-      setMessages([]);
-      setForumTopics([]);
-      setNotifications([]);
-      setParagraphComments([]);
-      setCurrentUserId('');
-
-      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}site_data_wipe_executed_v1`, 'true');
-    }
-  }, []);
-
   // Global Category & Tag Filter State
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<Category | 'Tümü'>('Tümü');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | undefined>(undefined);
@@ -1189,6 +1150,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return () => unsub();
     } catch (e) {
       console.warn('Firestore paragraphComments listener error:', e);
+    }
+  }, []);
+
+  // Total Site Data Wipe Effect (Deletes all users, stories, messages, forum topics, notifications, and comments from Firestore & LocalStorage)
+  useEffect(() => {
+    const isDataWiped = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}site_data_wipe_executed_v1`);
+    if (!isDataWiped) {
+      const collectionsToWipe = ['users', 'stories', 'messages', 'forumTopics', 'notifications', 'paragraphComments'];
+      collectionsToWipe.forEach((colName) => {
+        getDocs(collection(db, colName))
+          .then((snapshot) => {
+            snapshot.forEach((docSnap) => {
+              deleteDoc(doc(db, colName, docSnap.id)).catch((err) => console.warn(`Wipe ${colName} doc error:`, err));
+            });
+          })
+          .catch((err) => console.warn(`Wipe ${colName} getDocs error:`, err));
+      });
+
+      try {
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}users`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}stories`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}messages`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}forum_topics`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}notifications`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`);
+        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
+      } catch (e) {
+        console.warn('LocalStorage wipe error:', e);
+      }
+
+      setUsers([]);
+      setStories([]);
+      setMessages([]);
+      setForumTopics([]);
+      setNotifications([]);
+      setParagraphComments([]);
+      setCurrentUserId('');
+
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}site_data_wipe_executed_v1`, 'true');
     }
   }, []);
 
