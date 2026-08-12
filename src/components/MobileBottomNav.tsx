@@ -36,10 +36,14 @@ export const MobileBottomNav: React.FC = () => {
 
       <button
         onClick={() => openStoryEditor(null)}
-        className="flex flex-col items-center gap-0.5 p-2 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30 -mt-4"
+        className={`flex flex-col items-center gap-0.5 p-1 rounded-xl transition-all ${
+          activeView === 'editor'
+            ? 'text-purple-600 dark:text-purple-400 font-bold'
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+        }`}
       >
         <PenTool className="w-5 h-5" />
-        <span className="text-[9px] font-bold">Yaz</span>
+        <span className="text-[9px]">Yaz</span>
       </button>
 
       <button

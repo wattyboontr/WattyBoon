@@ -153,8 +153,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
               onClick={() => setIsWriteMenuOpen(!isWriteMenuOpen)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeView === 'editor'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
-                  : 'text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50'
+                  ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-300 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               <PenTool className="w-4 h-4" />
