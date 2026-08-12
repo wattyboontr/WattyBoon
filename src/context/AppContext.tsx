@@ -979,6 +979,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err: any) {
       console.warn('Google Auth Error:', err);
+      if (err.code === 'auth/unauthorized-domain') {
+        const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'watty-boon.vercel.app';
+        return { 
+          success: false, 
+          error: `Bu adres ("${currentDomain}") henüz Firebase tarafında yetkilendirilmemiş. Lütfen sistem yöneticinizle iletişime geçin veya onaylı adresten giriş yapın.` 
+        };
+      }
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
         return { success: false, error: 'Giriş penceresi kapatıldı.' };
       }
@@ -1066,6 +1073,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (err: any) {
         console.warn('Firebase login attempt error:', err);
+        if (err.code === 'auth/unauthorized-domain') {
+          const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'watty-boon.vercel.app';
+          return { 
+            success: false, 
+            error: `Bu adres ("${currentDomain}") henüz Firebase tarafında yetkilendirilmemiş. Lütfen sistem yöneticinizle iletişime geçin veya onaylı adresten giriş yapın.` 
+          };
+        }
         if (err.code === 'auth/operation-not-allowed') {
           return { success: false, error: 'Firebase üzerinde E-posta/Şifre ile giriş yapma seçeneği kapalı (auth/operation-not-allowed). Lütfen Firebase Console\'da bu yöntemi aktif edin.' };
         }
@@ -1133,6 +1147,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         newId = userCred.user.uid;
       } catch (err: any) {
         console.warn('Firebase register error:', err);
+        if (err.code === 'auth/unauthorized-domain') {
+          const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'watty-boon.vercel.app';
+          return { 
+            success: false, 
+            error: `Bu adres ("${currentDomain}") henüz Firebase tarafında yetkilendirilmemiş. Lütfen sistem yöneticinizle iletişime geçin veya onaylı adresten giriş yapın.` 
+          };
+        }
         if (err.code === 'auth/operation-not-allowed') {
           return { 
             success: false, 
