@@ -5,21 +5,23 @@ import { getAnalytics, isSupported } from 'firebase/analytics';
 import config from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
-  apiKey: config.apiKey || 'AIzaSyDBY8gjX8nw0HeKvJJBQmLCljO4L12R220',
-  authDomain: config.authDomain || 'wattyboon-12bc2.firebaseapp.com',
-  databaseURL: 'https://wattyboon-12bc2-default-rtdb.firebaseio.com',
-  projectId: config.projectId || 'wattyboon-12bc2',
-  storageBucket: config.storageBucket || 'wattyboon-12bc2.firebasestorage.app',
-  messagingSenderId: config.messagingSenderId || '367786387423',
-  appId: config.appId || '1:367786387423:web:96cab7a49f8ef98d84466a',
-  measurementId: config.measurementId || 'G-W3XDXZEJ2T',
+  apiKey: config.apiKey || 'AIzaSyA7VbszpQ3-IZG7VpauHG_9pOytSFIDTZo',
+  authDomain: config.authDomain || 'halogen-silicon-s6shk.firebaseapp.com',
+  projectId: config.projectId || 'halogen-silicon-s6shk',
+  storageBucket: config.storageBucket || 'halogen-silicon-s6shk.firebasestorage.app',
+  messagingSenderId: config.messagingSenderId || '563390609693',
+  appId: config.appId || '1:563390609693:web:b8d6d46cae02475f6409f4',
 };
 
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore using configured databaseId
-export const db = getFirestore(app, config.firestoreDatabaseId || '(default)');
+// Initialize Firestore using default database or custom ID if specified
+const dbId = config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)'
+  ? config.firestoreDatabaseId
+  : undefined;
+
+export const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
 export const auth = getAuth(app);
 
 // Safe Analytics Initialization for Web
