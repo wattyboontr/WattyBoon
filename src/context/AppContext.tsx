@@ -10,7 +10,9 @@ import {
   updatePassword, 
   deleteUser, 
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 
 // Firestore Async Persistence Helpers
@@ -156,6 +158,7 @@ interface AppContextType {
   // Auth & User
   currentUser: User | null;
   users: User[];
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, username: string, email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
@@ -908,6 +911,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Auth actions
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const userCred = await signInWithPopup(auth, provider);
+      const fbUser = userCred.user;
+      const fbUid = fbUser.uid;
+      const email = fbUser.email || '';
+      const displayName = fbUser.displayName || (email ? email.split('@')[0] : 'Kullanıcı');
+      const photoURL = fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUid}`;
+
+      let found: User | null = null;
+      try {
+        const userDocSnap = await getDoc(doc(db, 'users', fbUid));
+        if (userDocSnap.exists()) {
+          found = userDocSnap.data() as User;
+        }
+      } catch (e) {
+        console.warn('Firestore getDoc Google user error:', e);
+      }
+
+      if (!found) {
+        found = users.find((u) => u.id === fbUid || (email && u.email?.toLowerCase() === email.toLowerCase())) || null;
+      }
+
+      if (found) {
+        const updatedUser: User = { 
+          ...found, 
+          id: fbUid, 
+          email: email || found.email, 
+          name: found.name || displayName,
+          avatar: found.avatar || photoURL
+        };
+        setUsers((prev) => [...prev.filter((u) => u.id !== found!.id && u.id !== fbUid), updatedUser]);
+        await syncUserToFirestore(updatedUser);
+        setCurrentUserId(fbUid);
+        setActiveAuthorId(fbUid);
+        return { success: true };
+      } else {
+        const baseUsername = email ? email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : 'user_' + fbUid.slice(0, 6);
+        let username = baseUsername || 'user_' + fbUid.slice(0, 6);
+        let counter = 1;
+        while (users.some((u) => u.username?.toLowerCase() === username.toLowerCase())) {
+          username = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        const newUser: User = {
+          id: fbUid,
+          name: displayName,
+          username: username,
+          email: email,
+          avatar: photoURL,
+          bio: 'WattyBoon yazarı.',
+          followers: [],
+          following: [],
+          joinedDate: new Date().toISOString().split('T')[0],
+          library: [],
+        };
+
+        setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), newUser]);
+        await syncUserToFirestore(newUser);
+        setCurrentUserId(fbUid);
+        setActiveAuthorId(fbUid);
+        return { success: true };
+      }
+    } catch (err: any) {
+      console.warn('Google Auth Error:', err);
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        return { success: false, error: 'Giriş penceresi kapatıldı.' };
+      }
+      if (err.code === 'auth/popup-blocked') {
+        return { success: false, error: 'Tarayıcınız açılır pencereyi (popup) engelledi. Lütfen izin verip tekrar deneyiniz.' };
+      }
+      if (err.code === 'auth/operation-not-allowed') {
+        return { success: false, error: 'Firebase üzerinde Google ile giriş yöntemi henüz aktif değil. Lütfen Firebase Console -> Authentication sayfasından Google seçeneğini etkinleştirin.' };
+      }
+      return { success: false, error: err.message || 'Google ile giriş yapılırken bir hata oluştu.' };
+    }
+  };
+
   const login = async (emailOrUsername: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     const inputClean = emailOrUsername.trim();
     if (!inputClean) return { success: false, error: 'Lütfen e-posta adresinizi veya kullanıcı adınızı giriniz.' };
@@ -982,6 +1066,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (err: any) {
         console.warn('Firebase login attempt error:', err);
+        if (err.code === 'auth/operation-not-allowed') {
+          return { success: false, error: 'Firebase üzerinde E-posta/Şifre ile giriş yapma seçeneği kapalı (auth/operation-not-allowed). Lütfen Firebase Console\'da bu yöntemi aktif edin.' };
+        }
         if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
           return { success: false, error: 'Hatalı e-posta/kullanıcı adı veya şifre girdiniz.' };
         }
@@ -990,6 +1077,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (err.code === 'auth/user-disabled') {
           return { success: false, error: 'Bu hesap engellenmiş veya dondurulmuştur.' };
+        }
+        if (err.code === 'auth/too-many-requests') {
+          return { success: false, error: 'Çok fazla başarısız deneme yapıldı. Lütfen biraz bekleyip tekrar deneyiniz.' };
         }
         if (err.code === 'auth/network-request-failed') {
           return { success: false, error: 'İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edip tekrar deneyiniz.' };
@@ -1043,17 +1133,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         newId = userCred.user.uid;
       } catch (err: any) {
         console.warn('Firebase register error:', err);
+        if (err.code === 'auth/operation-not-allowed') {
+          return { 
+            success: false, 
+            error: 'Firebase tarafında E-posta/Şifre kayıt yöntemi kapalı (auth/operation-not-allowed). Lütfen Firebase Console -> Authentication -> Sign-in method ekranından "Email/Password" seçeneğini etkinleştirin.' 
+          };
+        }
         if (err.code === 'auth/email-already-in-use') {
-          return { success: false, error: 'Bu e-posta adresi zaten kullanımda.' };
+          return { success: false, error: 'Bu e-posta adresi ile zaten kayıtlı bir hesap bulunuyor.' };
         }
         if (err.code === 'auth/weak-password') {
-          return { success: false, error: 'Şifreniz en az 6 karakter olmalıdır.' };
+          return { success: false, error: 'Şifreniz çok zayıf. Lütfen en az 6 karakterli daha güçlü bir şifre belirleyin.' };
         }
         if (err.code === 'auth/invalid-email') {
           return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
         }
+        if (err.code === 'auth/too-many-requests') {
+          return { success: false, error: 'Çok fazla istek gönderildi. Lütfen bir süre sonra tekrar deneyiniz.' };
+        }
         if (err.code === 'auth/network-request-failed') {
-          return { success: false, error: 'İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edip tekrar deneyiniz.' };
+          return { success: false, error: 'İnternet bağlantısı hatası. Lütfen ağ bağlantınızı kontrol ediniz.' };
         }
         return { success: false, error: err.message || 'Kayıt olunurken bir hata oluştu. Lütfen bilgilerinizi kontrol edin.' };
       }
@@ -1837,6 +1936,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedTagFilter,
         currentUser,
         users,
+        loginWithGoogle,
         login,
         register,
         sendPasswordReset,
