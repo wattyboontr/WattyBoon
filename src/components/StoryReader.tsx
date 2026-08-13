@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { FormattedContent } from './FormattedContent';
-import { GraphCommentWidget } from './GraphCommentWidget';
+import { SupabaseCommentsSection } from './SupabaseCommentsSection';
+import { insertCommentToSupabase } from '../lib/supabase';
 import { 
   ArrowLeft, 
   BookOpen, 
@@ -144,16 +145,36 @@ export const StoryReader: React.FC = () => {
     setCommentInput('');
   };
 
-  const handleParagraphCommentSubmit = (e: React.FormEvent) => {
+  const handleParagraphCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (openParagraphIndex === null || !paragraphCommentInput.trim()) return;
+
+    const trimmedContent = paragraphCommentInput.trim();
+
+    // Local state fallback update
     addParagraphComment(
       story.id,
       activeChapterIndex,
       openParagraphIndex,
-      paragraphCommentInput,
+      trimmedContent,
       selectedTextForComment || undefined
     );
+
+    // Save to Supabase
+    if (currentUser) {
+      await insertCommentToSupabase({
+        storyId: story.id,
+        chapterIndex: activeChapterIndex,
+        paragraphIndex: openParagraphIndex,
+        selectedText: selectedTextForComment || null,
+        content: trimmedContent,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userUsername: currentUser.username,
+        userAvatar: currentUser.avatar,
+      });
+    }
+
     setParagraphCommentInput('');
   };
 
@@ -741,16 +762,8 @@ export const StoryReader: React.FC = () => {
           </div>
         </div>
 
-        {/* General Chapter Comments Section */}
-        <section className="pt-10 border-t border-purple-200 dark:border-purple-900/40 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              Bölüm Yorumları
-            </h3>
-          </div>
-          <GraphCommentWidget uid={`${story.id}_ch${activeChapterIndex}`} />
-        </section>
+        {/* Supabase Powered Comments Section */}
+        <SupabaseCommentsSection storyId={story.id} chapterIndex={activeChapterIndex} />
 
       </main>
 

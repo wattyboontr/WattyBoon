@@ -27,7 +27,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
-import { GraphCommentWidget } from './GraphCommentWidget';
+import { SupabaseCommentsSection } from './SupabaseCommentsSection';
 
 export const StoryDetailView: React.FC = () => {
   const { 
@@ -474,13 +474,7 @@ export const StoryDetailView: React.FC = () => {
       </section>
 
       {/* Story Comments Section */}
-      <section className="space-y-4 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-          Yorumlar
-        </h3>
-        <GraphCommentWidget uid={story.id} />
-      </section>
+      <SupabaseCommentsSection storyId={story.id} chapterIndex={0} />
 
       <AddToCustomListModal
         story={story}
