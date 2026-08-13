@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { UserRoleBadge } from './UserRoleBadge';
 import { 
   fetchCommentsFromSupabase, 
   insertCommentToSupabase, 
@@ -72,6 +73,7 @@ export const SupabaseCommentsSection: React.FC<SupabaseCommentsSectionProps> = (
       userName: currentUser.name,
       userUsername: currentUser.username,
       userAvatar: currentUser.avatar,
+      userRole: currentUser.role,
     });
 
     if (inserted) {
@@ -91,6 +93,7 @@ export const SupabaseCommentsSection: React.FC<SupabaseCommentsSectionProps> = (
         user_name: currentUser.name,
         user_username: currentUser.username,
         user_avatar: currentUser.avatar,
+        user_role: currentUser.role || 'user',
         likes_count: 0,
         liked_by: [],
         created_at: new Date().toISOString(),
@@ -346,9 +349,12 @@ CREATE POLICY "Allow public delete" ON public.comments FOR DELETE USING (true);`
                       className="w-8 h-8 rounded-full object-cover border border-purple-200 dark:border-purple-800"
                     />
                     <div>
-                      <span className="font-bold text-slate-900 dark:text-slate-100 block text-xs">
-                        {comment.user_name}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                          {comment.user_name}
+                        </span>
+                        <UserRoleBadge role={comment.user_role} userId={comment.user_id} />
+                      </div>
                       <span className="text-[10px] text-slate-400">@{comment.user_username}</span>
                     </div>
                   </div>

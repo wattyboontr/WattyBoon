@@ -39,6 +39,8 @@ export interface Chapter {
   musicUrl?: string; // Spotify or YouTube track link
 }
 
+export type UserRole = 'admin' | 'moderator' | 'author' | 'user';
+
 export interface Comment {
   id: string;
   chapterId?: string;
@@ -46,6 +48,7 @@ export interface Comment {
   userName: string;
   userUsername: string;
   userAvatar: string;
+  userRole?: UserRole;
   content: string;
   createdAt: string;
   likes: number;
@@ -113,6 +116,7 @@ export interface ParagraphComment {
   userName: string;
   userUsername: string;
   userAvatar: string;
+  userRole?: UserRole;
   content: string;
   createdAt: string;
   likes: number;
@@ -127,6 +131,7 @@ export interface User {
   avatar: string;
   coverUrl?: string;
   bio: string;
+  role?: UserRole;
   followers: string[]; // userIds following this user
   following: string[]; // userIds this user follows
   library: {
@@ -172,6 +177,7 @@ export interface ForumReply {
   userName: string;
   userUsername: string;
   userAvatar: string;
+  userRole?: UserRole;
   content: string;
   createdAt: string;
   likes: number;
@@ -187,6 +193,7 @@ export interface ForumTopic {
   authorName: string;
   authorUsername: string;
   authorAvatar: string;
+  authorRole?: UserRole;
   tags: string[];
   createdAt: string;
   likes: number;

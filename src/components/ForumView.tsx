@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { UserRoleBadge } from './UserRoleBadge';
 import { 
   MessageSquare, 
   Plus, 
@@ -207,11 +208,12 @@ export const ForumView: React.FC = () => {
                       <span className="px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold text-[10px]">
                         {topic.category}
                       </span>
-                      <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:underline" onClick={(e) => {
+                      <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:underline flex items-center gap-1" onClick={(e) => {
                         e.stopPropagation();
                         openAuthorProfile(topic.authorId);
                       }}>
                         {topic.authorName}
+                        <UserRoleBadge userId={topic.authorId} role={topic.authorRole} />
                       </span>
                       <span className="text-[10px] text-slate-400">
                         • {new Date(topic.createdAt).toLocaleDateString('tr-TR')}

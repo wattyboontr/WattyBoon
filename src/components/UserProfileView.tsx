@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { StoryCard } from './StoryCard';
+import { UserRoleBadge } from './UserRoleBadge';
 import { uploadImageToHost } from '../lib/imageUpload';
 import { 
   User as UserIcon, 
@@ -258,9 +259,12 @@ export const UserProfileView: React.FC = () => {
               </div>
 
               <div>
-                <h1 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-slate-100">
-                  {author.name}
-                </h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-slate-100">
+                    {author.name}
+                  </h1>
+                  <UserRoleBadge userId={author.id} role={author.role} size="md" />
+                </div>
                 <p className="text-xs font-bold text-purple-600 dark:text-purple-400">
                   @{author.username}
                 </p>
@@ -272,6 +276,17 @@ export const UserProfileView: React.FC = () => {
 
             {/* Follow / Edit / Settings Buttons */}
             <div className="flex items-center gap-3 self-center sm:self-auto flex-wrap">
+              {isSelf && (
+                <a
+                  href="https://wattyboon-yonetim-paneli.ai.studio/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 via-rose-600 to-amber-600 hover:opacity-90 text-white font-extrabold text-xs shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <Shield className="w-4 h-4 text-amber-300" />
+                  <span>Yönetim Paneli</span>
+                </a>
+              )}
               {isSelf ? (
                 <>
                   <button

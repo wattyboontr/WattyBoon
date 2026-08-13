@@ -23,6 +23,7 @@ export interface SupabaseCommentRow {
   user_name: string;
   user_username: string;
   user_avatar: string | null;
+  user_role?: string | null;
   likes_count: number;
   liked_by: string[];
   created_at: string;
@@ -76,6 +77,7 @@ export async function insertCommentToSupabase(payload: {
   userName: string;
   userUsername: string;
   userAvatar?: string;
+  userRole?: string | null;
 }): Promise<SupabaseCommentRow | null> {
   const newRow = {
     story_id: payload.storyId,
@@ -87,6 +89,7 @@ export async function insertCommentToSupabase(payload: {
     user_name: payload.userName,
     user_username: payload.userUsername,
     user_avatar: payload.userAvatar || '',
+    user_role: payload.userRole || 'user',
     likes_count: 0,
     liked_by: [],
     created_at: new Date().toISOString(),

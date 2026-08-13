@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { WattyboonLogo } from './WattyboonLogo';
+import { UserRoleBadge } from './UserRoleBadge';
 import { InfoTabType } from './InfoModal';
 import { EditStoryModal } from './EditStoryModal';
 import { Category } from '../types';
@@ -27,6 +28,8 @@ import {
   Mail,
   Grid,
   ShieldAlert,
+  Crown,
+  ExternalLink,
   Edit3,
   Home
 } from 'lucide-react';
@@ -273,10 +276,27 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
               >
                 {currentUser ? (
                   <>
-                    <div className="p-3 border-b border-slate-100 dark:border-slate-800 mb-1">
-                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{currentUser.name}</p>
+                    <div className="p-3 border-b border-slate-100 dark:border-slate-800 mb-1 space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{currentUser.name}</p>
+                        <UserRoleBadge userId={currentUser.id} role={currentUser.role} />
+                      </div>
                       <p className="text-xs text-purple-600 dark:text-purple-400">@{currentUser.username}</p>
                     </div>
+
+                    <a
+                      href="https://wattyboon-yonetim-paneli.ai.studio/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-700 hover:to-rose-700 shadow-md shadow-purple-500/20 transition-all mb-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-amber-300" />
+                        <span>Yönetim Paneli</span>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                    </a>
 
                     <button
                       onClick={() => {
