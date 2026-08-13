@@ -35,7 +35,8 @@ import {
   Moon,
   Brain,
   Lightbulb,
-  Cpu
+  Cpu,
+  Headphones
 } from 'lucide-react';
 
 const CATEGORIES: (Category | 'Tümü')[] = [
@@ -184,10 +185,83 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [currentUser, stories]);
 
+  // Featured Stories sorted by most likes & reads (Öne Çıkan & En Çok Beğenilen Hikayeler)
+  const mostLikedStories = useMemo(() => {
+    return [...availableStories]
+      .sort((a, b) => {
+        if (b.likes !== a.likes) return b.likes - a.likes;
+        return b.reads - a.reads;
+      })
+      .slice(0, 8);
+  }, [availableStories]);
+
+  // Featured Authors sorted by most followers (Öne Çıkan Yazarlar)
+  const sortedFeaturedAuthors = useMemo(() => {
+    return [...users]
+      .filter((u) => u && u.id && u.name)
+      .sort((a, b) => {
+        const followersA = a.followers?.length || 0;
+        const followersB = b.followers?.length || 0;
+        if (followersB !== followersA) return followersB - followersA;
+        const storiesA = stories.filter((s) => s.authorId === a.id && s.visibility === 'public').length;
+        const storiesB = stories.filter((s) => s.authorId === b.id && s.visibility === 'public').length;
+        return storiesB - storiesA;
+      });
+  }, [users, stories]);
+
   // Recommended Stories (Önerilen Hikayeler)
   const recommendedStories = useMemo(() => {
     return [...availableStories]
       .sort((a, b) => (b.reads * 0.4 + b.likes * 0.6) - (a.reads * 0.4 + a.likes * 0.6))
+      .slice(0, 8);
+  }, [availableStories]);
+
+  // Personalized Stories for user (Sana Özel - Okuma geçmişi ve ilgi duyduğu türlere göre)
+  const personalizedStories = useMemo(() => {
+    if (!availableStories.length) return [];
+    
+    const categoryWeights: Record<string, number> = {};
+    if (currentUser) {
+      currentUser.library?.forEach((item) => {
+        const s = stories.find((st) => st.id === item.storyId);
+        if (s?.category) {
+          categoryWeights[s.category] = (categoryWeights[s.category] || 0) + 3;
+        }
+      });
+      currentUser.readingProgress?.forEach((item) => {
+        const s = stories.find((st) => st.id === item.storyId);
+        if (s?.category) {
+          categoryWeights[s.category] = (categoryWeights[s.category] || 0) + 2;
+        }
+      });
+    }
+
+    const preferredCategories = Object.keys(categoryWeights);
+
+    if (preferredCategories.length > 0) {
+      return [...availableStories]
+        .filter((s) => preferredCategories.includes(s.category))
+        .sort((a, b) => {
+          const scoreA = (categoryWeights[a.category] || 0) + a.likes * 0.1;
+          const scoreB = (categoryWeights[b.category] || 0) + b.likes * 0.1;
+          return scoreB - scoreA;
+        })
+        .slice(0, 8);
+    }
+
+    return [...availableStories]
+      .sort((a, b) => (b.likes * 2 + b.reads) - (a.likes * 2 + a.reads))
+      .slice(0, 8);
+  }, [currentUser, availableStories, stories]);
+
+  // Short Stories Band (Kısa Hikayeler)
+  const shortStories = useMemo(() => {
+    return [...availableStories]
+      .filter((s) => s.isShortStory || s.readingTimeMinutes <= 7 || s.chapters.length === 1)
+      .sort((a, b) => {
+        if (a.isShortStory !== b.isShortStory) return a.isShortStory ? -1 : 1;
+        return b.likes - a.likes;
+      })
       .slice(0, 8);
   }, [availableStories]);
 
@@ -590,6 +664,85 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
         </section>
       )}
 
+      {/* Öne Çıkan Hikayeler Section (En Çok Beğenilen Hikayeler) */}
+      {!filters.query && filters.category === 'Tümü' && mostLikedStories.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Flame className="w-5 h-5 text-amber-500 fill-amber-500/20" />
+              Öne Çıkan Hikayeler
+            </h2>
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <Heart className="w-3.5 h-3.5 fill-current text-rose-500" /> En Çok Beğenilen Kurgular
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {mostLikedStories.map((story, idx) => (
+              <div key={`featured_story_${story.id}`} className="relative group">
+                {idx < 3 && (
+                  <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-black shadow-md flex items-center gap-0.5">
+                    <Crown className="w-3 h-3 fill-current" /> #{idx + 1}
+                  </div>
+                )}
+                <StoryCard story={story} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Sana Özel Section (Okuyucunun daha önce okuduğu hikayelerin türüne göre öneriler) */}
+      {!filters.query && filters.category === 'Tümü' && personalizedStories.length > 0 && (
+        <section className="space-y-4 p-5 rounded-3xl bg-gradient-to-r from-purple-900/10 via-indigo-900/10 to-slate-900/10 border border-purple-500/20 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              Sana Özel
+            </h2>
+            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> Okuma geçmişine ve ilgi alanlarına göre
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {personalizedStories.map((story) => (
+              <StoryCard key={`personalized_${story.id}`} story={story} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Kısa Hikayeler Öneri Bandı */}
+      {!filters.query && filters.category === 'Tümü' && shortStories.length > 0 && (
+        <section className="space-y-4 p-5 rounded-3xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/20 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-xl bg-amber-500 text-white shadow-sm">
+                <Zap className="w-4 h-4 fill-current" />
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Kısa Hikayeler
+              </h2>
+            </div>
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              ⚡ Tek Oturuşta Bitirebileceğiniz Kurgular
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {shortStories.map((story) => (
+              <div key={`short_${story.id}`} className="relative group">
+                <div className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-extrabold shadow-md flex items-center gap-0.5">
+                  <Zap className="w-2.5 h-2.5 fill-current" /> Kısa
+                </div>
+                <StoryCard story={story} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Recommended Stories Section (Önerilen Hikayeler) */}
       {!filters.query && filters.category === 'Tümü' && recommendedStories.length > 0 && (
         <section className="space-y-4">
@@ -632,54 +785,84 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
         </section>
       )}
 
-      {/* Featured Authors Spotlight ("Haftanın Öne Çıkan Yazarları") */}
-      {!filters.query && filters.category === 'Tümü' && (
+      {/* Featured Authors Spotlight ("Öne Çıkan Yazarlar" - En çok takipçisi olanlar) */}
+      {!filters.query && filters.category === 'Tümü' && sortedFeaturedAuthors.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <Crown className="w-5 h-5 text-amber-500 fill-amber-500/20" />
               Öne Çıkan Yazarlar
             </h2>
-            <span className="text-xs text-slate-500">Topluluk Liderleri</span>
+            <span className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+              <UserCheck className="w-3.5 h-3.5" /> En Çok Takip Edilen Kalemler
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {users.map((author) => {
+            {sortedFeaturedAuthors.map((author, index) => {
               const isFollowing = currentUser?.following?.includes(author.id);
               const isSelf = currentUser?.id === author.id;
               const authorStoriesCount = stories.filter((s) => s.authorId === author.id && s.visibility === 'public').length;
+              const followersCount = author.followers?.length || 0;
 
               return (
                 <div 
                   key={author.id}
-                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm hover:border-purple-200 dark:hover:border-purple-900/50 transition-all flex items-center gap-3.5 group"
+                  className={`relative p-4 rounded-2xl bg-white dark:bg-slate-900 border transition-all flex items-center gap-3.5 group ${
+                    index === 0
+                      ? 'border-amber-400/80 dark:border-amber-500/50 shadow-md ring-2 ring-amber-400/20'
+                      : 'border-slate-100 dark:border-slate-800/80 hover:border-purple-200 dark:hover:border-purple-900/50 shadow-sm'
+                  }`}
                 >
-                  <img 
-                    src={author.avatar} 
-                    alt={author.name} 
-                    className="w-12 h-12 rounded-xl object-cover ring-2 ring-purple-500/20 cursor-pointer"
-                    onClick={() => openAuthorProfile(author.id)}
-                  />
+                  {index < 3 && (
+                    <div 
+                      className={`absolute -top-2.5 left-4 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm ${
+                        index === 0
+                          ? 'bg-amber-500 text-white'
+                          : index === 1
+                            ? 'bg-slate-400 text-white'
+                            : 'bg-amber-700 text-white'
+                      }`}
+                    >
+                      <Crown className="w-3 h-3 fill-current" />
+                      {index === 0 ? '1. Lider Yazar' : `${index + 1}. Sıra`}
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <img 
+                      src={author.avatar} 
+                      alt={author.name} 
+                      className="w-13 h-13 rounded-xl object-cover ring-2 ring-purple-500/20 cursor-pointer"
+                      onClick={() => openAuthorProfile(author.id)}
+                    />
+                  </div>
+
                   <div className="flex-1 min-w-0">
                     <h4 
                       onClick={() => openAuthorProfile(author.id)}
-                      className="text-xs font-bold text-slate-900 dark:text-slate-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate"
+                      className="text-xs font-bold text-slate-900 dark:text-slate-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate flex items-center gap-1"
                     >
                       {author.name}
                     </h4>
                     <p className="text-[11px] text-slate-400 truncate mb-1">@{author.username}</p>
-                    <p className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">
-                      {authorStoriesCount} Hikaye • {author.followers?.length || 0} Takipçi
-                    </p>
+                    <div className="flex items-center gap-2 text-[10px] font-bold">
+                      <span className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-200/50 dark:border-purple-900/50">
+                        {followersCount} Takipçi
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {authorStoriesCount} Hikaye
+                      </span>
+                    </div>
                   </div>
 
                   {!isSelf && (
                     <button
                       onClick={() => toggleFollowUser(author.id)}
-                      className={`p-2 rounded-xl transition-all ${
+                      className={`p-2.5 rounded-xl transition-all cursor-pointer ${
                         isFollowing
-                          ? 'bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300'
-                          : 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm'
+                          ? 'bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300 hover:bg-purple-200'
+                          : 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm shadow-purple-500/20'
                       }`}
                       title={isFollowing ? 'Takipten Çık' : 'Takip Et'}
                     >

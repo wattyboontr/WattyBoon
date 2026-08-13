@@ -36,6 +36,7 @@ export interface Chapter {
   createdAt: string;
   likes?: number;
   likedBy?: string[];
+  musicUrl?: string; // Spotify or YouTube track link
 }
 
 export interface Comment {
@@ -74,6 +75,8 @@ export interface Story {
   updatedAt: string;
   readingTimeMinutes: number;
   isNsfw?: boolean;
+  isShortStory?: boolean; // Tag for Short Story / Kısa Hikaye
+  musicUrl?: string; // Background / Inspiration music link for story
 }
 
 export interface ReadingProgress {

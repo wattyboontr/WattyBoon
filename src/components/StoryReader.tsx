@@ -29,7 +29,12 @@ import {
   MessageSquarePlus,
   Quote,
   Info,
-  Trash2
+  Trash2,
+  Headphones,
+  Music,
+  Volume2,
+  ExternalLink,
+  Zap
 } from 'lucide-react';
 
 export const StoryReader: React.FC = () => {
@@ -113,6 +118,7 @@ export const StoryReader: React.FC = () => {
   }
 
   const currentChapter = story.chapters[activeChapterIndex] || story.chapters[0];
+  const activeMusicUrl = currentChapter?.musicUrl || story.musicUrl;
   const isSaved = isStoryInLibrary(story.id);
   const isLiked = currentUser ? story.likedBy.includes(currentUser.id) : false;
   const isChapterLiked = currentUser ? (currentChapter?.likedBy || []).includes(currentUser.id) : false;
@@ -470,6 +476,94 @@ export const StoryReader: React.FC = () => {
             {currentChapter?.title || `Bölüm ${activeChapterIndex + 1}`}
           </h2>
         </div>
+
+        {/* Author's Music / Song Link Widget */}
+        {activeMusicUrl && (
+          <div className="p-4 rounded-3xl bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border border-emerald-500/30 text-white shadow-xl space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-400 animate-pulse">
+                  <Headphones className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                      Yazarın Şarkı Seçimi 🎵
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                      {currentChapter?.musicUrl ? 'Bölüme Özel' : 'Hikaye Genel'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-medium mt-0.5">
+                    Yazar bu bölümü kaleme alırken bu parçayı dinliyordu:
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={activeMusicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/30"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Şarkıyı Aç</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Embedded Player for Spotify or YouTube */}
+            {(() => {
+              const trimmed = activeMusicUrl.trim();
+              if (trimmed.includes('spotify.com')) {
+                let embedUrl = trimmed;
+                if (!trimmed.includes('/embed/')) {
+                  embedUrl = trimmed.replace('spotify.com/', 'spotify.com/embed/');
+                }
+                return (
+                  <div className="rounded-2xl overflow-hidden shadow-inner bg-black/40">
+                    <iframe
+                      src={embedUrl}
+                      width="100%"
+                      height="80"
+                      frameBorder="0"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                      title="Yazarın Spotify Şarkısı"
+                      className="rounded-2xl"
+                    />
+                  </div>
+                );
+              }
+              if (trimmed.includes('youtube.com') || trimmed.includes('youtu.be')) {
+                let videoId = '';
+                if (trimmed.includes('youtu.be/')) {
+                  videoId = trimmed.split('youtu.be/')[1]?.split('?')[0] || '';
+                } else if (trimmed.includes('watch?v=')) {
+                  videoId = trimmed.split('watch?v=')[1]?.split('&')[0] || '';
+                }
+                if (videoId) {
+                  return (
+                    <div className="rounded-2xl overflow-hidden shadow-inner bg-black/40 aspect-video max-h-48">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title="Yazarın YouTube Şarkısı"
+                        className="w-full h-full rounded-2xl"
+                      />
+                    </div>
+                  );
+                }
+              }
+              return null;
+            })()}
+          </div>
+        )}
 
         {/* Chapter Content Body with Natural Text Selection and Right-Click Context Menu */}
         <article className={`${fontSizeClasses} ${fontFamilyClasses} ${lineHeightClasses} space-y-6 select-text`}>

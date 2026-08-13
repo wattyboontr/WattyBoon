@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Category, Visibility, Chapter } from '../types';
 import { AIAssistantModal } from './AIAssistantModal';
 import { FormattedContent } from './FormattedContent';
+import { uploadImageToHost } from '../lib/imageUpload';
 import { 
   PenTool, 
   Sparkles, 
@@ -30,7 +31,10 @@ import {
   Upload,
   Columns,
   Maximize2,
-  X
+  X,
+  Music,
+  Headphones,
+  Zap
 } from 'lucide-react';
 
 const CATEGORIES: Category[] = [
@@ -77,6 +81,8 @@ export const StoryEditor: React.FC = () => {
   const [visibility, setVisibility] = useState<Visibility>(existingStory?.visibility || 'public');
   const [status, setStatus] = useState<'ongoing' | 'completed'>(existingStory?.status || 'ongoing');
   const [isNsfw, setIsNsfw] = useState<boolean>(existingStory?.isNsfw || false);
+  const [isShortStory, setIsShortStory] = useState<boolean>(existingStory?.isShortStory || false);
+  const [musicUrl, setMusicUrl] = useState<string>(existingStory?.musicUrl || '');
 
   // Chapters State
   const [chapters, setChapters] = useState<Chapter[]>(
@@ -179,38 +185,31 @@ export const StoryEditor: React.FC = () => {
   };
 
   // Device Image Upload Handlers
-  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        alert('Lütfen 8MB\'dan küçük bir görsel seçin.');
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Lütfen 10MB\'dan küçük bir görsel seçin.');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setCoverUrl(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      const hostedUrl = await uploadImageToHost(file);
+      if (hostedUrl) {
+        setCoverUrl(hostedUrl);
+      }
     }
   };
 
-  const handleChapterImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChapterImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        alert('Lütfen 8MB\'dan küçük bir görsel seçin.');
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Lütfen 10MB\'dan küçük bir görsel seçin.');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const dataUrl = event.target.result as string;
-          applyFormatting(`\n![Görsel](${dataUrl})\n`);
-        }
-      };
-      reader.readAsDataURL(file);
+      const hostedUrl = await uploadImageToHost(file);
+      if (hostedUrl) {
+        applyFormatting(`\n![Görsel](${hostedUrl})\n`);
+      }
     }
   };
 
@@ -242,6 +241,8 @@ export const StoryEditor: React.FC = () => {
       visibility: publishMode,
       status,
       isNsfw,
+      isShortStory,
+      musicUrl,
       chapters,
     });
 
@@ -464,6 +465,47 @@ export const StoryEditor: React.FC = () => {
             </div>
           </div>
 
+          {/* Kısa Hikaye / Short Story Toggle */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <label className="flex items-center gap-3 p-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/30 cursor-pointer transition-all hover:bg-amber-100/50">
+              <input
+                type="checkbox"
+                checked={isShortStory}
+                onChange={(e) => setIsShortStory(e.target.checked)}
+                className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
+              />
+              <div>
+                <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-amber-500 fill-amber-500/20" /> Kısa Hikaye (Tek Oturuşluk)
+                </span>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Ana sayfadaki "Kısa Hikayeler" öneri bandında öne çıkarılır.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Background Music Link (Spotify or YouTube) */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Headphones className="w-4 h-4 text-emerald-500" />
+              <span>İlham / Arka Plan Şarkısı (Spotify veya YouTube)</span>
+            </label>
+            <div className="relative">
+              <input
+                type="url"
+                value={musicUrl}
+                onChange={(e) => setMusicUrl(e.target.value)}
+                placeholder="https://open.spotify.com/track/... veya YouTube linki"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <Music className="w-4 h-4 text-emerald-500 absolute left-3 top-3" />
+            </div>
+            <p className="text-[10px] text-slate-400">
+              Okuyucular hikayenizi okurken yazarken dinlediğiniz bu şarkıyı dinleyebilir.
+            </p>
+          </div>
+
           {/* +18 NSFW Toggle */}
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <label className="flex items-center gap-3 p-3 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/30 cursor-pointer transition-all hover:bg-rose-100/50">
@@ -549,6 +591,26 @@ export const StoryEditor: React.FC = () => {
                 <Sparkles className="w-4 h-4 text-amber-300" />
                 Yapay Zeka Yazım Asistanı
               </button>
+            </div>
+
+            {/* Chapter Specific Music Link Input */}
+            <div className="px-4 py-2 bg-emerald-50/40 dark:bg-emerald-950/20 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+              <Headphones className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex-shrink-0">
+                Bölüm Şarkısı:
+              </span>
+              <input
+                type="url"
+                value={activeChapter.musicUrl || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setChapters((prev) =>
+                    prev.map((c, idx) => (idx === activeChapterIndex ? { ...c, musicUrl: val } : c))
+                  );
+                }}
+                placeholder="Bu bölümü yazarken dinlediğiniz Spotify veya YouTube şarkı bağlantısı..."
+                className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
             </div>
 
             {/* Rich Editor Toolbar */}

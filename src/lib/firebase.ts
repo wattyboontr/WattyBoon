@@ -2,26 +2,22 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import config from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
-  apiKey: config.apiKey || 'AIzaSyA7VbszpQ3-IZG7VpauHG_9pOytSFIDTZo',
-  authDomain: config.authDomain || 'halogen-silicon-s6shk.firebaseapp.com',
-  projectId: config.projectId || 'halogen-silicon-s6shk',
-  storageBucket: config.storageBucket || 'halogen-silicon-s6shk.firebasestorage.app',
-  messagingSenderId: config.messagingSenderId || '563390609693',
-  appId: config.appId || '1:563390609693:web:b8d6d46cae02475f6409f4',
+  apiKey: "AIzaSyBTtB_MP70tOJ-gZa0B6YF8OOJaKIloabk",
+  authDomain: "wattyboon-94c69.firebaseapp.com",
+  databaseURL: "https://wattyboon-94c69-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "wattyboon-94c69",
+  storageBucket: "wattyboon-94c69.firebasestorage.app",
+  messagingSenderId: "227047858074",
+  appId: "1:227047858074:web:44fee655f929bcd83be423",
+  measurementId: "G-T8FP8BN0KP"
 };
 
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore using default database or custom ID if specified
-const dbId = config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)'
-  ? config.firestoreDatabaseId
-  : undefined;
-
-export const db = dbId ? getFirestore(app, dbId) : getFirestore(app);
+export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 // Safe Analytics Initialization for Web

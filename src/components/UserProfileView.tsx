@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { StoryCard } from './StoryCard';
+import { uploadImageToHost } from '../lib/imageUpload';
 import { 
   User as UserIcon, 
   UserPlus, 
@@ -159,29 +160,25 @@ export const UserProfileView: React.FC = () => {
     setShowDeleteModal(false);
   };
 
-  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setAvatarInput(base64);
-        updateProfile(bioInput, nameInput, base64, coverInput || author.coverUrl);
-      };
-      reader.readAsDataURL(file);
+      const hostedUrl = await uploadImageToHost(file);
+      if (hostedUrl) {
+        setAvatarInput(hostedUrl);
+        updateProfile(bioInput, nameInput, hostedUrl, coverInput || author.coverUrl);
+      }
     }
   };
 
-  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setCoverInput(base64);
-        updateProfile(bioInput, nameInput, avatarInput || author.avatar, base64);
-      };
-      reader.readAsDataURL(file);
+      const hostedUrl = await uploadImageToHost(file);
+      if (hostedUrl) {
+        setCoverInput(hostedUrl);
+        updateProfile(bioInput, nameInput, avatarInput || author.avatar, hostedUrl);
+      }
     }
   };
 

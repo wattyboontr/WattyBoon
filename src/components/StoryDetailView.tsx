@@ -20,7 +20,11 @@ import {
   Calendar,
   ListPlus,
   Flame,
-  Trash2
+  Trash2,
+  Headphones,
+  Zap,
+  Music,
+  ExternalLink
 } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
 import { GraphCommentWidget } from './GraphCommentWidget';
@@ -146,6 +150,12 @@ export const StoryDetailView: React.FC = () => {
               <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
                 {story.category}
               </span>
+
+              {story.isShortStory && (
+                <span className="px-2.5 py-1 rounded-full bg-amber-500 text-white font-extrabold shadow-sm flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 fill-current" /> Kısa Hikaye
+                </span>
+              )}
 
               {story.isNsfw && (
                 <span className="px-2.5 py-1 rounded-full bg-rose-600 text-white font-black shadow-sm flex items-center gap-1">
@@ -335,6 +345,30 @@ export const StoryDetailView: React.FC = () => {
         <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal whitespace-pre-line">
           {story.summary}
         </p>
+
+        {/* Music Link Widget */}
+        {story.musicUrl && (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-900/40 via-slate-900 to-purple-900/40 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <Headphones className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="font-bold text-emerald-400 block">Yazarın Müzik Listesi / Şarkısı</span>
+                <span className="text-[11px] text-slate-300">Yazar bu hikayeyi kurgularken bu parçayı dinledi.</span>
+              </div>
+            </div>
+            <a
+              href={story.musicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1 shrink-0 transition-all shadow-md"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Dinle</span>
+            </a>
+          </div>
+        )}
 
         {story.tags.length > 0 && (
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-2">
