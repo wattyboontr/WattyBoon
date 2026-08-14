@@ -126,12 +126,12 @@ export const EditStoryModal: React.FC<EditStoryModalProps> = ({ isOpen, onClose 
                         {story.updatedAt || story.createdAt}
                       </span>
                     </div>
-                    <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold ${
-                      story.status === 'completed'
-                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold ${
+                      story.status === 'completed' || story.isCompleted
+                        ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300/40'
                         : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
                     }`}>
-                      {story.status === 'completed' ? 'Tamamlandı' : 'Devam Ediyor / Taslak'}
+                      {story.status === 'completed' || story.isCompleted ? '✓ Tamamlandı' : 'Devam Ediyor / Taslak'}
                     </span>
                   </div>
                 </div>

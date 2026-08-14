@@ -27,7 +27,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
-import { SupabaseCommentsSection } from './SupabaseCommentsSection';
+import { StoryCommentsSection } from './StoryCommentsSection';
 
 export const StoryDetailView: React.FC = () => {
   const { 
@@ -474,7 +474,7 @@ export const StoryDetailView: React.FC = () => {
       </section>
 
       {/* Story Comments Section */}
-      <SupabaseCommentsSection storyId={story.id} chapterIndex={0} />
+      <StoryCommentsSection storyId={story.id} chapterIndex={0} />
 
       <AddToCustomListModal
         story={story}

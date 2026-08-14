@@ -265,14 +265,12 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
       .slice(0, 8);
   }, [availableStories]);
 
-  // Completed Stories (Tamamlanan Hikayeler)
+  // Completed Stories (Tamamlanan Hikayeler) - Yalnızca Tamamlandı olarak işaretlenenler
   const completedStories = useMemo(() => {
-    const completed = availableStories.filter((s) => s.status === 'completed');
-    if (completed.length === 0) {
-      // If no story is explicitly marked completed yet, fallback to top stories
-      return [...availableStories].sort((a, b) => b.chapters.length - a.chapters.length).slice(0, 8);
-    }
-    return completed.sort((a, b) => b.reads - a.reads).slice(0, 8);
+    return availableStories
+      .filter((s) => s.status === 'completed' || s.isCompleted === true)
+      .sort((a, b) => b.reads - a.reads)
+      .slice(0, 8);
   }, [availableStories]);
 
   // Filtered stories result
@@ -694,7 +692,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
 
       {/* Sana Özel Section (Okuyucunun daha önce okuduğu hikayelerin türüne göre öneriler) */}
       {!filters.query && filters.category === 'Tümü' && personalizedStories.length > 0 && (
-        <section className="space-y-4 p-5 rounded-3xl bg-gradient-to-r from-purple-900/10 via-indigo-900/10 to-slate-900/10 border border-purple-500/20 shadow-sm">
+        <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -715,7 +713,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
 
       {/* Kısa Hikayeler Öneri Bandı */}
       {!filters.query && filters.category === 'Tümü' && shortStories.length > 0 && (
-        <section className="space-y-4 p-5 rounded-3xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/20 shadow-sm">
+        <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-xl bg-amber-500 text-white shadow-sm">

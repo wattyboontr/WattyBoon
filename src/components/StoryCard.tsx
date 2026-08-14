@@ -55,6 +55,11 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
                 +18
               </span>
             )}
+            {(story.status === 'completed' || story.isCompleted) && (
+              <span className="px-1.5 py-0.2 bg-emerald-600 text-white rounded text-[9px] font-bold">
+                ✓ Tamamlandı
+              </span>
+            )}
             {story.visibility === 'private' && (
               <span className="flex items-center gap-1 px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded text-[10px] font-semibold">
                 <Lock className="w-2.5 h-2.5" /> Özel
@@ -118,6 +123,11 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
             {story.isNsfw && (
               <span className="px-1.5 py-0.5 text-[9px] font-black rounded bg-rose-600 text-white shadow-md">
                 +18
+              </span>
+            )}
+            {(story.status === 'completed' || story.isCompleted) && (
+              <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded-md bg-emerald-600 text-white shadow-md flex items-center gap-0.5">
+                ✓ Tamamlandı
               </span>
             )}
           </div>
@@ -252,6 +262,11 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
             {story.isNsfw && (
               <span className="px-1.5 py-0.5 text-[9px] font-black rounded bg-rose-600 text-white shadow-md">
                 +18
+              </span>
+            )}
+            {(story.status === 'completed' || story.isCompleted) && (
+              <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded bg-emerald-600/95 backdrop-blur-md text-white shadow-sm" title="Tamamlanmış Hikaye">
+                ✓ Bitti
               </span>
             )}
           </div>

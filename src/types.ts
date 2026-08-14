@@ -69,6 +69,7 @@ export interface Story {
   tags: string[];
   visibility: Visibility; // 'public' | 'private'
   status: 'ongoing' | 'completed';
+  isCompleted?: boolean;
   likes: number;
   likedBy: string[];
   reads: number;

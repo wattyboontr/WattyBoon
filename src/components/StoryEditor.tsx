@@ -34,7 +34,8 @@ import {
   X,
   Music,
   Headphones,
-  Zap
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 
 const CATEGORIES: Category[] = [
@@ -461,6 +462,49 @@ export const StoryEditor: React.FC = () => {
               >
                 <span className="flex items-center gap-1.5"><Lock className="w-4 h-4 text-amber-500" /> Gizli / Özel</span>
                 <span className="text-[10px] font-normal text-slate-400">Yalnızca siz görebilirsiniz</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Story Status (Tamamlandı / Devam Ediyor) */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+              <span>Hikaye Durumu</span>
+              {status === 'completed' && (
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Tamamlandı Olarak İşaretli
+                </span>
+              )}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setStatus('ongoing')}
+                className={`p-3 rounded-xl border text-left flex flex-col gap-1 text-xs font-bold transition-all ${
+                  status === 'ongoing'
+                    ? 'bg-purple-50 dark:bg-purple-950/80 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm'
+                    : 'border-slate-200 dark:border-slate-800 text-slate-500'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-purple-500" /> Devam Ediyor
+                </span>
+                <span className="text-[10px] font-normal text-slate-400">Yeni bölümler gelecek</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatus('completed')}
+                className={`p-3 rounded-xl border text-left flex flex-col gap-1 text-xs font-bold transition-all ${
+                  status === 'completed'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-sm ring-1 ring-emerald-400/50'
+                    : 'border-slate-200 dark:border-slate-800 text-slate-500'
+                }`}
+              >
+                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Tamamlandı
+                </span>
+                <span className="text-[10px] font-normal text-slate-400">Final bölümü yazıldı</span>
               </button>
             </div>
           </div>

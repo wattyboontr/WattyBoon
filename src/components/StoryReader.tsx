@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { FormattedContent } from './FormattedContent';
-import { SupabaseCommentsSection } from './SupabaseCommentsSection';
-import { insertCommentToSupabase } from '../lib/supabase';
+import { StoryCommentsSection } from './StoryCommentsSection';
+import { insertComment } from '../lib/cloudflareStorage';
 import { 
   ArrowLeft, 
   BookOpen, 
@@ -160,9 +160,9 @@ export const StoryReader: React.FC = () => {
       selectedTextForComment || undefined
     );
 
-    // Save to Supabase
+    // Save to Persistent Storage & Cloud Backup
     if (currentUser) {
-      await insertCommentToSupabase({
+      await insertComment({
         storyId: story.id,
         chapterIndex: activeChapterIndex,
         paragraphIndex: openParagraphIndex,
@@ -762,8 +762,8 @@ export const StoryReader: React.FC = () => {
           </div>
         </div>
 
-        {/* Supabase Powered Comments Section */}
-        <SupabaseCommentsSection storyId={story.id} chapterIndex={activeChapterIndex} />
+        {/* Comments Section */}
+        <StoryCommentsSection storyId={story.id} chapterIndex={activeChapterIndex} />
 
       </main>
 
