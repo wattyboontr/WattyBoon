@@ -946,7 +946,7 @@ export const StoryReader: React.FC = () => {
       {/* Mobile & Tablet Floating Reader Quick Toolbar */}
       <aside 
         aria-label="Mobil Okuma Kontrolleri"
-        className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-md bg-white/95 dark:bg-slate-950/95 text-slate-900 dark:text-white backdrop-blur-xl border border-purple-200 dark:border-purple-800/60 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.6)] p-2 flex items-center justify-between gap-1.5 safe-bottom animate-fade-in"
+        className="md:hidden fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-md bg-white/95 dark:bg-slate-950/95 text-slate-900 dark:text-white backdrop-blur-xl border border-purple-200 dark:border-purple-800/60 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.6)] p-2 flex items-center justify-between gap-1.5 animate-fade-in"
       >
         <button
           onClick={handlePrevChapter}
