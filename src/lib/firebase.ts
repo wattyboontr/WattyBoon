@@ -10,16 +10,19 @@ import {
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import appletConfig from '../../firebase-applet-config.json';
 
-const firebaseConfig = {
+const firebaseConfig: Record<string, any> = {
   apiKey: appletConfig.apiKey || "AIzaSyBTtB_MP70tOJ-gZa0B6YF8OOJaKIloabk",
   authDomain: appletConfig.authDomain || "wattyboon-94c69.firebaseapp.com",
   databaseURL: (appletConfig as any).databaseURL || "https://wattyboon-94c69-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: appletConfig.projectId || "wattyboon-94c69",
   storageBucket: appletConfig.storageBucket || "wattyboon-94c69.firebasestorage.app",
   messagingSenderId: appletConfig.messagingSenderId || "227047858074",
-  appId: appletConfig.appId || "1:227047858074:web:44fee655f929bcd83be423",
-  measurementId: appletConfig.measurementId || "G-T8FP8BN0KP"
+  appId: appletConfig.appId || "1:227047858074:web:fcbbb65ae4256bcd3be423",
 };
+
+if ((appletConfig as any).measurementId) {
+  firebaseConfig.measurementId = (appletConfig as any).measurementId;
+}
 
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -51,8 +54,8 @@ try {
 
 export const auth = authInstance;
 
-// Safe Analytics Initialization for Web
-if (typeof window !== 'undefined') {
+// Safe Analytics Initialization for Web only if measurementId is actually configured
+if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
   isSupported().then((supported) => {
     if (supported) {
       getAnalytics(app);

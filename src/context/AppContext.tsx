@@ -14,7 +14,6 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
-  getRedirectResult,
   setPersistence,
   browserLocalPersistence,
   inMemoryPersistence
@@ -446,32 +445,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Firebase Auth State Listener & Redirect handler
+  // Firebase Auth State Listener
   useEffect(() => {
     try {
-      // Check for redirect result on mobile devices
-      getRedirectResult(auth).then(async (userCred) => {
-        if (userCred && userCred.user) {
-          const fbUid = userCred.user.uid;
-          const fbEmail = userCred.user.email?.toLowerCase() || '';
-          let matched: User | null = null;
-          try {
-            const uSnap = await getDoc(doc(db, 'users', fbUid));
-            if (uSnap.exists()) {
-              matched = uSnap.data() as User;
-            }
-          } catch (e) {
-            console.warn('Redirect getDoc user error:', e);
-          }
-          if (matched) {
-            setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), matched!]);
-            setCurrentUserId(fbUid);
-          }
-        }
-      }).catch((err) => {
-        console.warn('Firebase getRedirectResult error:', err);
-      });
-
       const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           const fbUid = firebaseUser.uid;
