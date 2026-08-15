@@ -10,7 +10,26 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// Enable trust proxy for cloud deployment & global CDN/load balancers
+app.set('trust proxy', true);
+
+// Enable Global CORS & Standard Open Web Headers
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json());
+
+// API health endpoint for uptime checks & deployment monitoring
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // API route for Email Notifications when a new comment or reply is posted
 app.post('/api/notify-comment', async (req, res) => {
