@@ -602,8 +602,8 @@ export const StoryReader: React.FC = () => {
           </div>
         )}
 
-        {/* Chapter Content Body with Natural Text Selection and Right-Click Context Menu */}
-        <article className={`${fontSizeClasses} ${fontFamilyClasses} ${lineHeightClasses} space-y-6 select-text`}>
+        {/* Chapter Content Body with Natural Text Selection for In-line Commenting */}
+        <article className={`${fontSizeClasses} ${fontFamilyClasses} ${lineHeightClasses} space-y-6 story-reader-text prevent-copy unselectable`}>
           {rawParagraphs.length > 0 ? (
             rawParagraphs.map((paragraphText, pIdx) => {
               const pComments = paragraphComments.filter(
@@ -656,8 +656,9 @@ export const StoryReader: React.FC = () => {
             className="fixed z-50 min-w-[200px] bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800/80 rounded-2xl shadow-2xl p-1.5 animate-fade-in text-xs space-y-1"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Metin İşlemleri
+            <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+              <span>Metin İşlemleri</span>
+              <span className="text-[9px] text-purple-500 font-bold">🔒 Telif Korumalı</span>
             </div>
 
             <button
@@ -669,19 +670,6 @@ export const StoryReader: React.FC = () => {
                 {contextMenu.selectedText ? 'Seçilen Metne Yorum Yaz' : 'Bu Paragrafa Yorum Yaz'}
               </span>
             </button>
-
-            {contextMenu.selectedText && (
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(contextMenu.selectedText);
-                  setContextMenu(null);
-                }}
-                className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2 transition-colors"
-              >
-                <Copy className="w-4 h-4 text-slate-400" />
-                <span>Seçilen Metni Kopyala</span>
-              </button>
-            )}
 
             <button
               onClick={() => setContextMenu(null)}
@@ -954,6 +942,54 @@ export const StoryReader: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Mobile & Tablet Floating Reader Quick Toolbar */}
+      <aside 
+        aria-label="Mobil Okuma Kontrolleri"
+        className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-md bg-white/95 dark:bg-slate-950/95 text-slate-900 dark:text-white backdrop-blur-xl border border-purple-200 dark:border-purple-800/60 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.15)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.6)] p-2 flex items-center justify-between gap-1.5 safe-bottom animate-fade-in"
+      >
+        <button
+          onClick={handlePrevChapter}
+          disabled={activeChapterIndex === 0}
+          className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25 text-slate-700 dark:text-slate-200 active:scale-95 transition-all"
+          title="Önceki Bölüm"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        <select
+          value={activeChapterIndex}
+          onChange={(e) => openStoryReader(story.id, Number(e.target.value))}
+          className="flex-1 min-w-0 px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 truncate"
+        >
+          {story.chapters.map((chap, idx) => (
+            <option key={chap.id} value={idx}>
+              Bölüm {idx + 1}: {chap.title}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={() => setShowReaderSettings(!showReaderSettings)}
+          className={`p-2.5 rounded-xl active:scale-95 transition-all ${
+            showReaderSettings 
+              ? 'bg-purple-600 text-white' 
+              : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+          }`}
+          title="Görünüm Ayarları"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={handleNextChapter}
+          disabled={activeChapterIndex >= story.chapters.length - 1}
+          className="p-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-25 text-white active:scale-95 transition-all shadow-md shadow-purple-500/20"
+          title="Sonraki Bölüm"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </aside>
 
     </div>
   );

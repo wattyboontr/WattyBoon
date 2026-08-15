@@ -38,10 +38,29 @@ const AppContent: React.FC = () => {
       );
     };
 
+    const handleContextMenu = (e: MouseEvent) => {
+      if (isInputOrEditable(e.target)) return; // Allow right click in input fields for paste/spellcheck
+      // Check if clicked element is an image or inside reader/story text
+      const target = e.target as HTMLElement;
+      if (target.tagName.toLowerCase() === 'img' || target.closest('img') || target.closest('.prevent-copy, .story-content, .story-reader-text, main')) {
+        e.preventDefault();
+        setCopyWarning('🔒 Telif Koruması: Görsel ve metin indirme / kopyalama menüsü devre dışı bırakılmıştır.');
+      }
+    };
+
+    const handleDragStart = (e: DragEvent) => {
+      if (isInputOrEditable(e.target)) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName.toLowerCase() === 'img' || target.closest('img')) {
+        e.preventDefault();
+        setCopyWarning('🔒 İçerik Koruması: Görsel sürükleyerek kaydetme engellendi.');
+      }
+    };
+
     const handleCopy = (e: ClipboardEvent) => {
       if (isInputOrEditable(e.target)) return; // Allow copying from form fields
       e.preventDefault();
-      setCopyWarning('🔒 İçerik Koruması Aktif: WattyBoon üzerindeki eserler ve metinler kopyalamaya karşı telif hakkı koruması altındadır.');
+      setCopyWarning('🔒 Telif Koruması: WattyBoon üzerindeki eserler kopyalamaya karşı koruma altındadır.');
     };
 
     const handleCut = (e: ClipboardEvent) => {
@@ -52,18 +71,25 @@ const AppContent: React.FC = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isInputOrEditable(e.target)) return;
-      // Prevent Ctrl+C / Cmd+C / Ctrl+U / Ctrl+S
+      // Prevent Ctrl+C / Cmd+C / Ctrl+U / Ctrl+S / Ctrl+P / F12 / DevTools
       if ((e.ctrlKey || e.metaKey) && ['c', 'C', 'u', 'U', 's', 'S', 'p', 'P'].includes(e.key)) {
         e.preventDefault();
-        setCopyWarning('🔒 Telif Koruması: Kısayol tuşları ile kopyalama/kaydetme devre dışı bırakılmıştır.');
+        setCopyWarning('🔒 Telif Koruması: Kısayol tuşları ile kopyalama / kaydetme / yazdırma devre dışıdır.');
+      }
+      if (e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key))) {
+        e.preventDefault();
       }
     };
 
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('dragstart', handleDragStart);
     document.addEventListener('copy', handleCopy);
     document.addEventListener('cut', handleCut);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('dragstart', handleDragStart);
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('cut', handleCut);
       document.removeEventListener('keydown', handleKeyDown);

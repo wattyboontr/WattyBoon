@@ -37,7 +37,9 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
           <img 
             src={story.coverUrl} 
             alt={story.title} 
-            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none select-none ${
               isBlurred ? 'blur-md filter scale-110 brightness-75' : ''
             }`} 
           />
@@ -94,7 +96,9 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
           <img 
             src={story.coverUrl} 
             alt={story.title} 
-            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none select-none ${
               isBlurred ? 'blur-lg filter scale-110 brightness-75' : ''
             }`} 
           />
@@ -226,7 +230,9 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
         <img 
           src={story.coverUrl} 
           alt={story.title} 
-          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+          draggable={false}
+          onDragStart={(e) => e.preventDefault()}
+          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none select-none ${
             isBlurred ? 'blur-md filter scale-110 brightness-75' : ''
           }`} 
         />

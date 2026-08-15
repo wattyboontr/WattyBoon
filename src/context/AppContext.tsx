@@ -12,7 +12,12 @@ import {
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  setPersistence,
+  browserLocalPersistence,
+  inMemoryPersistence
 } from 'firebase/auth';
 
 // Firestore Async Persistence Helpers
@@ -441,9 +446,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Firebase Auth State Listener
+  // Firebase Auth State Listener & Redirect handler
   useEffect(() => {
     try {
+      // Check for redirect result on mobile devices
+      getRedirectResult(auth).then(async (userCred) => {
+        if (userCred && userCred.user) {
+          const fbUid = userCred.user.uid;
+          const fbEmail = userCred.user.email?.toLowerCase() || '';
+          let matched: User | null = null;
+          try {
+            const uSnap = await getDoc(doc(db, 'users', fbUid));
+            if (uSnap.exists()) {
+              matched = uSnap.data() as User;
+            }
+          } catch (e) {
+            console.warn('Redirect getDoc user error:', e);
+          }
+          if (matched) {
+            setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), matched!]);
+            setCurrentUserId(fbUid);
+          }
+        }
+      }).catch((err) => {
+        console.warn('Firebase getRedirectResult error:', err);
+      });
+
       const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           const fbUid = firebaseUser.uid;
@@ -915,7 +943,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      const userCred = await signInWithPopup(auth, provider);
+      
+      let userCred;
+      try {
+        userCred = await signInWithPopup(auth, provider);
+      } catch (popupErr: any) {
+        // If IndexedDB is closing or blocked, switch to memory/local persistence and retry once
+        const errMsg = popupErr?.message || '';
+        if (errMsg.includes('closing') || errMsg.includes('Database') || popupErr.code === 'auth/internal-error') {
+          try {
+            await setPersistence(auth, inMemoryPersistence);
+            userCred = await signInWithPopup(auth, provider);
+          } catch (retryErr: any) {
+            throw retryErr || popupErr;
+          }
+        } else {
+          throw popupErr;
+        }
+      }
+
       const fbUser = userCred.user;
       const fbUid = fbUser.uid;
       const email = fbUser.email || '';
@@ -979,6 +1025,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err: any) {
       console.warn('Google Auth Error:', err);
+      const rawMsg = String(err?.message || '');
+      
+      if (rawMsg.includes('closing') || rawMsg.includes('Database') || rawMsg.includes('IndexedDB')) {
+        return { 
+          success: false, 
+          error: 'Tarayıcı oturum belleği geçici olarak meşgul. Lütfen tekrar deneyin veya gizli sekmeden çıkıp e-posta ile giriş yapın.' 
+        };
+      }
       if (err.code === 'auth/unauthorized-domain') {
         const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'watty-boon.vercel.app';
         return { 

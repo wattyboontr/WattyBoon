@@ -1,6 +1,12 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { initializeFirestore, getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { 
+  initializeAuth, 
+  indexedDBLocalPersistence, 
+  browserLocalPersistence, 
+  inMemoryPersistence, 
+  getAuth 
+} from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import appletConfig from '../../firebase-applet-config.json';
 
@@ -32,7 +38,18 @@ try {
 }
 
 export const db = firestoreInstance;
-export const auth = getAuth(app);
+
+// Resilient Auth initialization with fallback persistence to prevent "Database is closing" errors on mobile IndexedDB
+let authInstance;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: [browserLocalPersistence, indexedDBLocalPersistence, inMemoryPersistence]
+  });
+} catch {
+  authInstance = getAuth(app);
+}
+
+export const auth = authInstance;
 
 // Safe Analytics Initialization for Web
 if (typeof window !== 'undefined') {

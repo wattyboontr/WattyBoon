@@ -203,7 +203,7 @@ export const LibraryView: React.FC = () => {
                       Bu listede henüz hiç hikaye yok.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
                       {listStories.map((story) => (
                         <StoryCard key={`clist_${list.id}_${story.id}`} story={story} />
                       ))}
@@ -325,7 +325,7 @@ export const LibraryView: React.FC = () => {
             }
 
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
                 {list.map((story) => (
                   <StoryCard key={story.id} story={story} />
                 ))}

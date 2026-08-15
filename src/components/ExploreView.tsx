@@ -675,7 +675,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {mostLikedStories.map((story, idx) => (
               <div key={`featured_story_${story.id}`} className="relative group">
                 {idx < 3 && (
@@ -703,7 +703,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {personalizedStories.map((story) => (
               <StoryCard key={`personalized_${story.id}`} story={story} />
             ))}
@@ -728,7 +728,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {shortStories.map((story) => (
               <div key={`short_${story.id}`} className="relative group">
                 <div className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-extrabold shadow-md flex items-center gap-0.5">
@@ -754,7 +754,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {recommendedStories.map((story) => (
               <StoryCard key={`rec_${story.id}`} story={story} />
             ))}
@@ -775,7 +775,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {completedStories.map((story) => (
               <StoryCard key={`comp_${story.id}`} story={story} />
             ))}
@@ -963,7 +963,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
         {filteredStories.length > 0 ? (
           <div className={
             layoutMode === 'grid' 
-              ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4'
+              ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4'
               : 'space-y-4'
           }>
             {filteredStories.map((story) => (
