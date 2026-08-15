@@ -11,5 +11,3 @@ export const WattyboonLogo: React.FC<WattyboonLogoProps> = ({ className = 'text-
     </span>
   );
 };
-
-

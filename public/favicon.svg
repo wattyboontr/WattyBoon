@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- WattyBoon Signature Brand Gradient (Purple -> Fuchsia -> Indigo) -->
+    <linearGradient id="wb-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9333ea" />
+      <stop offset="45%" stop-color="#c026d3" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+
+    <!-- Top-to-Bottom Subtle Sheen -->
+    <linearGradient id="wb-sheen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3" />
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.2" />
+    </linearGradient>
+
+    <!-- Contrast filter ensuring crystal clear visibility in both Dark Mode & Light Mode -->
+    <filter id="wb-contrast" x="-20%" y="-20%" width="140%" height="140%">
+      <!-- Ambient Purple Glow for Dark Mode Luminosity -->
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#9333ea" flood-opacity="0.5" />
+      <!-- Crisp Outline Shadow for Light Mode Contrast -->
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#090d16" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Group with 100% transparent canvas background -->
+  <g filter="url(#wb-contrast)">
+    <!-- Exact Geometric Bold 'W' of WattyBoon's Modern Typography -->
+    <path 
+      d="M 40 85 
+         L 122 85 
+         L 214 365 
+         L 256 205 
+         L 298 365 
+         L 390 85 
+         L 472 85 
+         L 344 435 
+         L 272 435 
+         L 256 368 
+         L 240 435 
+         L 168 435 
+         Z" 
+      fill="url(#wb-logo-grad)" 
+    />
+    
+    <!-- Sheen overlay for subtle depth -->
+    <path 
+      d="M 40 85 
+         L 122 85 
+         L 214 365 
+         L 256 205 
+         L 298 365 
+         L 390 85 
+         L 472 85 
+         L 344 435 
+         L 272 435 
+         L 256 368 
+         L 240 435 
+         L 168 435 
+         Z" 
+      fill="url(#wb-sheen)" 
+    />
+  </g>
+</svg>
