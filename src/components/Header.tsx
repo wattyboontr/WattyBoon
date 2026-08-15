@@ -4,7 +4,6 @@ import { WattyboonLogo } from './WattyboonLogo';
 import { UserRoleBadge } from './UserRoleBadge';
 import { InfoTabType } from './InfoModal';
 import { EditStoryModal } from './EditStoryModal';
-import { ShareSiteModal } from './ShareSiteModal';
 import { Category } from '../types';
 import { 
   BookOpen, 
@@ -32,8 +31,7 @@ import {
   Crown,
   ExternalLink,
   Edit3,
-  Home,
-  Share2
+  Home
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -64,7 +62,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isWriteMenuOpen, setIsWriteMenuOpen] = useState(false);
   const [isEditStoryModalOpen, setIsEditStoryModalOpen] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-purple-100 dark:border-purple-900/30 transition-colors duration-200 pt-[env(safe-area-inset-top,0px)]">
@@ -202,16 +199,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
         {/* Right Action Icons & User Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
           
-          {/* Share Site Button */}
-          <button
-            onClick={() => setIsShareModalOpen(true)}
-            className="p-2.5 rounded-xl border bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/80 transition-all flex items-center gap-1.5 font-bold text-xs shadow-sm"
-            title="Siteyi Paylaş (Herkese Açık Link)"
-          >
-            <Share2 className="w-4 h-4" />
-            <span className="hidden md:inline">Paylaş</span>
-          </button>
-
           {/* Messages Button */}
           <button
             onClick={() => openMessagingWithUser()}
@@ -353,17 +340,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
 
                 {/* Bilgilendirme ve İletişim Bağlantıları */}
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-1 mt-1 space-y-0.5">
-                  <button
-                    onClick={() => {
-                      setIsShareModalOpen(true);
-                      setIsUserMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/60 transition-colors"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-purple-500" />
-                    Siteyi Dünyayla Paylaş (Genel Link)
-                  </button>
-
                   {onOpenInfoModal && (
                     <>
                       <button
@@ -489,12 +465,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
       <EditStoryModal 
         isOpen={isEditStoryModalOpen} 
         onClose={() => setIsEditStoryModalOpen(false)} 
-      />
-
-      {/* Global Share Site Modal */}
-      <ShareSiteModal 
-        isOpen={isShareModalOpen} 
-        onClose={() => setIsShareModalOpen(false)} 
       />
     </header>
   );
