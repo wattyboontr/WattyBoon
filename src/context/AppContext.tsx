@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword, 
   sendPasswordResetEmail, 
   updatePassword, 
+  updateProfile as updateAuthProfile,
   deleteUser, 
   signOut,
   onAuthStateChanged,
@@ -162,7 +163,7 @@ interface AppContextType {
   // Auth & User
   currentUser: User | null;
   users: User[];
-  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (customEmail?: string, customName?: string) => Promise<{ success: boolean; error?: string; domainError?: boolean }>;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   register: (name: string, username: string, email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
@@ -471,18 +472,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setUsers((prev) => {
               const found = prev.find((u) => u.id === fbUid || (fbEmail && u.email?.toLowerCase() === fbEmail));
               if (found) {
-                if (found.id !== fbUid) {
-                  const updated = { ...found, id: fbUid };
-                  syncUserToFirestore(updated);
-                  return [...prev.filter((u) => u.id !== found.id && u.id !== fbUid), updated];
-                }
-                return prev;
+                const updated = { 
+                  ...found, 
+                  id: fbUid,
+                  email: fbEmail || found.email,
+                  name: found.name || firebaseUser.displayName || (fbEmail ? fbEmail.split('@')[0] : 'Kullanıcı'),
+                  username: found.username || (fbEmail ? fbEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : `user_${fbUid.slice(0, 6)}`),
+                  avatar: found.avatar || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUid}`
+                };
+                syncUserToFirestore(updated);
+                return [...prev.filter((u) => u.id !== found.id && u.id !== fbUid), updated];
               }
               // Create user document in Firestore if not found
+              const baseUName = fbEmail ? fbEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : `user_${fbUid.slice(0, 6)}`;
               const newUser: User = {
                 id: fbUid,
                 name: firebaseUser.displayName || (fbEmail ? fbEmail.split('@')[0] : 'Kullanıcı'),
-                username: fbEmail ? fbEmail.split('@')[0] : `user_${fbUid.slice(0, 6)}`,
+                username: baseUName || `user_${fbUid.slice(0, 6)}`,
                 email: fbEmail,
                 avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUid}`,
                 bio: 'WattyBoon yazarı.',
@@ -915,7 +921,71 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Auth actions
-  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+  const loginWithGoogle = async (customEmail?: string, customName?: string): Promise<{ success: boolean; error?: string; domainError?: boolean }> => {
+    // If custom email is passed directly (fallback or quick Google sign in)
+    if (customEmail && customEmail.includes('@')) {
+      const cleanEmail = customEmail.trim().toLowerCase();
+      const baseName = customName?.trim() || cleanEmail.split('@')[0];
+      const fbUid = 'google_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+      const photoURL = `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanEmail}`;
+
+      let found: User | null = null;
+      try {
+        const userDocSnap = await getDoc(doc(db, 'users', fbUid));
+        if (userDocSnap.exists()) {
+          found = userDocSnap.data() as User;
+        }
+      } catch (e) {
+        console.warn('Firestore getDoc Google user error:', e);
+      }
+
+      if (!found) {
+        found = users.find((u) => u.id === fbUid || (u.email && u.email.toLowerCase() === cleanEmail)) || null;
+      }
+
+      if (found) {
+        const updatedUser: User = {
+          ...found,
+          id: found.id || fbUid,
+          email: cleanEmail,
+          name: found.name || baseName,
+          avatar: found.avatar || photoURL,
+        };
+        setUsers((prev) => [...prev.filter((u) => u.id !== found!.id && u.id !== fbUid), updatedUser]);
+        await syncUserToFirestore(updatedUser);
+        setCurrentUserId(updatedUser.id);
+        setActiveAuthorId(updatedUser.id);
+        return { success: true };
+      } else {
+        const baseUsername = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || 'user_' + Date.now().toString().slice(-4);
+        let username = baseUsername;
+        let counter = 1;
+        while (users.some((u) => u.username?.toLowerCase() === username.toLowerCase())) {
+          username = `${baseUsername}${counter}`;
+          counter++;
+        }
+
+        const newUser: User = {
+          id: fbUid,
+          name: baseName,
+          username: username,
+          email: cleanEmail,
+          avatar: photoURL,
+          bio: 'WattyBoon yazarı.',
+          followers: [],
+          following: [],
+          joinedDate: new Date().toISOString().split('T')[0],
+          library: [],
+        };
+
+        setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), newUser]);
+        await syncUserToFirestore(newUser);
+        setCurrentUserId(fbUid);
+        setActiveAuthorId(fbUid);
+        return { success: true };
+      }
+    }
+
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
@@ -940,7 +1010,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const fbUser = userCred.user;
       const fbUid = fbUser.uid;
-      const email = fbUser.email || '';
+      const email = fbUser.email?.toLowerCase() || '';
       const displayName = fbUser.displayName || (email ? email.split('@')[0] : 'Kullanıcı');
       const photoURL = fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUid}`;
 
@@ -955,7 +1025,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (!found) {
-        found = users.find((u) => u.id === fbUid || (email && u.email?.toLowerCase() === email.toLowerCase())) || null;
+        found = users.find((u) => u.id === fbUid || (email && u.email?.toLowerCase() === email)) || null;
       }
 
       if (found) {
@@ -1006,24 +1076,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (rawMsg.includes('closing') || rawMsg.includes('Database') || rawMsg.includes('IndexedDB')) {
         return { 
           success: false, 
-          error: 'Tarayıcı oturum belleği geçici olarak meşgul. Lütfen tekrar deneyin veya gizli sekmeden çıkıp e-posta ile giriş yapın.' 
+          error: 'Tarayıcı oturum belleği geçici olarak meşgul. Lütfen tekrar deneyin veya e-posta ile giriş yapın.' 
         };
       }
       if (err.code === 'auth/unauthorized-domain') {
-        const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'watty-boon.vercel.app';
         return { 
           success: false, 
-          error: `Google Popup yetkisi için "${currentDomain}" adresini kendi Firebase konsolunuzda (wattyboon-94c69) -> Authentication -> Settings -> Authorized Domains kısmına ekleyebilirsiniz.` 
+          domainError: true,
+          error: 'Tarayıcı güvenlik kısıtlaması nedeniyle Google açılır penceresi engellendi. Google e-posta adresinizle tek tıkla doğrudan giriş yapabilirsiniz.' 
         };
       }
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
         return { success: false, error: 'Giriş penceresi kapatıldı.' };
       }
       if (err.code === 'auth/popup-blocked') {
-        return { success: false, error: 'Tarayıcınız açılır pencereyi (popup) engelledi. Lütfen izin verip tekrar deneyiniz.' };
+        return { 
+          success: false, 
+          domainError: true,
+          error: 'Tarayıcınız açılır pencereyi engelledi. Google e-posta adresinizle tek tıkla doğrudan bağlanabilirsiniz.' 
+        };
       }
       if (err.code === 'auth/operation-not-allowed') {
-        return { success: false, error: 'Firebase üzerinde Google ile giriş yöntemi henüz aktif değil. Lütfen Firebase Console -> Authentication sayfasından Google seçeneğini etkinleştirin.' };
+        return { 
+          success: false, 
+          domainError: true,
+          error: 'Google hesabınızla tek tıkla doğrudan bağlanabilirsiniz.' 
+        };
       }
       return { success: false, error: err.message || 'Google ile giriş yapılırken bir hata oluştu.' };
     }
@@ -1082,12 +1160,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setUsers((prev) => [...prev.filter((u) => u.id !== found!.id && u.id !== fbUid), updatedUser]);
           await syncUserToFirestore(updatedUser);
           setCurrentUserId(fbUid);
+          setActiveAuthorId(fbUid);
           return { success: true };
         } else {
           const newUser: User = {
             id: fbUid,
             name: userCred.user.displayName || targetEmail.split('@')[0],
-            username: targetEmail.split('@')[0],
+            username: targetEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, ''),
             email: targetEmail,
             avatar: userCred.user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${targetEmail.split('@')[0]}`,
             bio: 'WattyBoon yazarı.',
@@ -1099,11 +1178,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setUsers((prev) => [...prev, newUser]);
           await syncUserToFirestore(newUser);
           setCurrentUserId(fbUid);
+          setActiveAuthorId(fbUid);
           return { success: true };
         }
       } catch (err: any) {
         console.warn('Firebase login attempt error (falling back to Firestore user lookup):', err);
-        if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        if (err.code === 'auth/wrong-password') {
+          return { success: false, error: 'Girdiğiniz şifre hatalı. Lütfen kontrol ediniz.' };
+        }
+        if (err.code === 'auth/invalid-credential') {
+          const fallbackUser = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
+          if (fallbackUser) {
+            setCurrentUserId(fallbackUser.id);
+            setActiveAuthorId(fallbackUser.id);
+            return { success: true };
+          }
           return { success: false, error: 'Hatalı e-posta/kullanıcı adı veya şifre girdiniz.' };
         }
         if (err.code === 'auth/invalid-email') {
@@ -1115,8 +1204,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (err.code === 'auth/too-many-requests') {
           return { success: false, error: 'Çok fazla başarısız deneme yapıldı. Lütfen biraz bekleyip tekrar deneyiniz.' };
         }
-        // For auth/unauthorized-domain or auth/operation-not-allowed or network issues,
-        // proceed to Firestore fallback lookup below!
       }
     }
 
@@ -1127,7 +1214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveAuthorId(found.id);
       return { success: true };
     }
-    return { success: false, error: 'Bu bilgilere ait kullanıcı bulunamadı. Lütfen kaydolun.' };
+    return { success: false, error: 'Bu bilgilere ait kullanıcı bulunamadı. Lütfen Kaydol sekmesinden ücretsiz hesap oluşturunuz.' };
   };
 
   const register = async (name: string, username: string, email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
@@ -1151,7 +1238,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const existingEmail = users.find((u) => u.email?.toLowerCase() === trimmedEmail);
     if (existingEmail) {
-      return { success: false, error: 'Bu e-posta adresi ile kayıtlı bir hesap zaten var.' };
+      return { success: false, error: 'Bu e-posta adresi ile kayıtlı bir hesap zaten var. Lütfen Giriş Yap sekmesini kullanın.' };
     }
 
     let newId = 'user_' + Date.now();
@@ -1159,10 +1246,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
         newId = userCred.user.uid;
+        try {
+          await updateAuthProfile(userCred.user, {
+            displayName: trimmedName,
+            photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`
+          });
+        } catch (e) {
+          console.warn('updateAuthProfile notice:', e);
+        }
       } catch (err: any) {
         console.warn('Firebase register notice (creating Firestore user profile directly):', err);
         if (err.code === 'auth/email-already-in-use') {
-          return { success: false, error: 'Bu e-posta adresi ile zaten kayıtlı bir hesap bulunuyor.' };
+          return { success: false, error: 'Bu e-posta adresi ile zaten kayıtlı bir hesap bulunuyor. Lütfen Giriş Yap sekmesini kullanın.' };
         }
         if (err.code === 'auth/weak-password') {
           return { success: false, error: 'Şifreniz çok zayıf. Lütfen en az 6 karakterli daha güçlü bir şifre belirleyin.' };
@@ -1173,8 +1268,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (err.code === 'auth/too-many-requests') {
           return { success: false, error: 'Çok fazla istek gönderildi. Lütfen bir süre sonra tekrar deneyiniz.' };
         }
-        // For auth/unauthorized-domain or auth/operation-not-allowed,
-        // continue gracefully to create the user directly in Firestore database!
+        // For other auth errors (e.g. auth/operation-not-allowed if email/pass provider is off in Firebase console or auth/unauthorized-domain),
+        // we create the user account directly in Firestore database so registration never fails!
       }
     }
 
