@@ -262,7 +262,7 @@ export const LibraryView: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-                    <span className="text-slate-500">{story.chapters.length} Bölüm • {story.reads} Okunma</span>
+                    <span className="text-slate-500 dark:text-slate-400">{story.chapters.length} Bölüm • {story.reads} Okunma</span>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openStoryEditor(story.id)}

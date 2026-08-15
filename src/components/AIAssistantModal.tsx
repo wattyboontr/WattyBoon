@@ -62,7 +62,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
               <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Novella AI Yazım Asistanı</h3>
+              <h3 className="text-base font-bold">WattyBoon AI Yazım Asistanı</h3>
               <p className="text-[11px] text-purple-200">Gemini 2.5 Flash ile desteklenen edebi yaratıcılık motoru</p>
             </div>
           </div>

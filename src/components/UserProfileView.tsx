@@ -164,22 +164,32 @@ export const UserProfileView: React.FC = () => {
   const handleAvatarFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Lütfen 10MB\'dan küçük bir görsel seçin.');
+        return;
+      }
       const hostedUrl = await uploadImageToHost(file);
       if (hostedUrl) {
         setAvatarInput(hostedUrl);
         updateProfile(bioInput, nameInput, hostedUrl, coverInput || author.coverUrl);
       }
+      e.target.value = '';
     }
   };
 
   const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Lütfen 10MB\'dan küçük bir görsel seçin.');
+        return;
+      }
       const hostedUrl = await uploadImageToHost(file);
       if (hostedUrl) {
         setCoverInput(hostedUrl);
         updateProfile(bioInput, nameInput, avatarInput || author.avatar, hostedUrl);
       }
+      e.target.value = '';
     }
   };
 
@@ -389,7 +399,7 @@ export const UserProfileView: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-500 mb-1">Ad Soyad</label>
+                  <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">Ad Soyad</label>
                   <input
                     type="text"
                     value={nameInput}
@@ -399,7 +409,7 @@ export const UserProfileView: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-500 mb-1">Avatar Görsel URL (İsteğe Bağlı)</label>
+                  <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">Avatar Görsel URL (İsteğe Bağlı)</label>
                   <input
                     type="text"
                     value={avatarInput}
@@ -411,7 +421,7 @@ export const UserProfileView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-500 mb-1">Biyografi</label>
+                <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">Biyografi</label>
                 <textarea
                   rows={2}
                   value={bioInput}
@@ -615,7 +625,7 @@ export const UserProfileView: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-8">
-            <p className="text-sm text-slate-500">Bu yazar henüz bir hikaye yayınlamadı.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Bu yazar henüz bir hikaye yayınlamadı.</p>
           </div>
         )}
       </section>

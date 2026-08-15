@@ -38,11 +38,11 @@ export const FormattedContent: React.FC<FormattedContentProps> = ({
               onTouchEnd={(e) => onParagraphMouseUp && onParagraphMouseUp(e as any, idx)}
               className="my-6 flex flex-col items-center justify-center group"
             >
-              <div className="relative max-w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg bg-slate-100 dark:bg-slate-900/80 p-1">
+              <div className="relative max-w-full overflow-hidden rounded-none border-0 p-0 shadow-none bg-transparent">
                 <img
                   src={imgUrl}
                   alt={altText || 'Hikaye Görseli'}
-                  className="max-h-[550px] w-auto max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-[1.01]"
+                  className="max-h-[550px] w-auto max-w-full object-contain rounded-none border-0 shadow-none transition-transform duration-300 group-hover:scale-[1.01]"
                   loading="lazy"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -72,11 +72,11 @@ export const FormattedContent: React.FC<FormattedContentProps> = ({
               onTouchEnd={(e) => onParagraphMouseUp && onParagraphMouseUp(e as any, idx)}
               className="my-6 flex flex-col items-center justify-center group"
             >
-              <div className="relative max-w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg bg-slate-100 dark:bg-slate-900/80 p-1">
+              <div className="relative max-w-full overflow-hidden rounded-none border-0 p-0 shadow-none bg-transparent">
                 <img
                   src={text}
                   alt="Hikaye Görseli"
-                  className="max-h-[550px] w-auto max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-[1.01]"
+                  className="max-h-[550px] w-auto max-w-full object-contain rounded-none border-0 shadow-none transition-transform duration-300 group-hover:scale-[1.01]"
                   loading="lazy"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -111,11 +111,11 @@ export const FormattedContent: React.FC<FormattedContentProps> = ({
 
             parts.push(
               <span key={matchKey++} className="block my-4 text-center">
-                <span className="inline-block relative max-w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md bg-slate-100 dark:bg-slate-900 p-1">
+                <span className="inline-block relative max-w-full overflow-hidden rounded-none border-0 p-0 shadow-none bg-transparent">
                   <img
                     src={url}
                     alt={alt || 'Görsel'}
-                    className="max-h-[480px] w-auto max-w-full rounded-xl object-contain"
+                    className="max-h-[480px] w-auto max-w-full rounded-none border-0 object-contain shadow-none"
                     loading="lazy"
                   />
                 </span>
@@ -154,7 +154,7 @@ export const FormattedContent: React.FC<FormattedContentProps> = ({
         // 5. Blockquotes
         if (text.startsWith('> ')) {
           return (
-            <blockquote key={idx} className="border-l-4 border-purple-500 pl-4 py-2 italic text-slate-600 dark:text-slate-300 bg-purple-500/5 rounded-r-xl my-3">
+            <blockquote key={idx} className="border-l-4 border-purple-500 pl-4 py-2 italic text-slate-700 dark:text-slate-300 bg-purple-500/10 rounded-r-xl my-3">
               {text.replace('> ', '')}
             </blockquote>
           );

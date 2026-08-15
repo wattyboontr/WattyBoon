@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import appletConfig from '../../firebase-applet-config.json';
@@ -19,7 +19,19 @@ const firebaseConfig = {
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 const databaseId = (appletConfig as any).firestoreDatabaseId || '(default)';
-export const db = getFirestore(app, databaseId);
+
+// Initialize Firestore with robust long-polling to prevent WebChannelConnection stream transport errors in container/proxy environments
+let firestoreInstance;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    ignoreUndefinedProperties: true,
+  }, databaseId === '(default)' ? undefined : databaseId);
+} catch {
+  firestoreInstance = getFirestore(app, databaseId);
+}
+
+export const db = firestoreInstance;
 export const auth = getAuth(app);
 
 // Safe Analytics Initialization for Web
@@ -31,17 +43,17 @@ if (typeof window !== 'undefined') {
   }).catch(() => {});
 }
 
-// Connection test helper
+// Connection test helper (silently verify or log only if critical)
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+      console.warn("Firebase running in offline / cache fallback mode.");
     }
   }
 }
-testConnection();
+testConnection().catch(() => {});
 
 // Standard Firestore Error Handling Helper
 export enum OperationType {

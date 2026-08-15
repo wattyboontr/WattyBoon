@@ -469,7 +469,7 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex items-center justify-between text-xs">
-          <span className="text-slate-500">Bir kategoriye tıklayarak ilgili hikayeleri keşfedebilirsiniz.</span>
+          <span className="text-slate-500 dark:text-slate-400">Bir kategoriye tıklayarak ilgili hikayeleri keşfedebilirsiniz.</span>
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors"

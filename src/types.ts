@@ -113,6 +113,8 @@ export interface ParagraphComment {
   chapterIndex: number;
   paragraphIndex: number;
   selectedText?: string;
+  parentId?: string | null;
+  replyToUserName?: string | null;
   userId: string;
   userName: string;
   userUsername: string;

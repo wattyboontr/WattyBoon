@@ -83,7 +83,7 @@ export const NotificationDrawer: React.FC = () => {
               {/* Sender Avatar */}
               <div className="relative flex-shrink-0">
                 <img
-                  src={notif.senderAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Novella'}
+                  src={notif.senderAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=WattyBoon'}
                   alt="Sender"
                   className="w-11 h-11 rounded-xl object-cover ring-2 ring-purple-500/20"
                 />
