@@ -27,8 +27,7 @@ import {
   Brain,
   Lightbulb,
   PenTool,
-  Smile,
-  Filter
+  Smile
 } from 'lucide-react';
 
 interface CategoriesModalProps {
@@ -46,6 +45,201 @@ interface CategoryItem {
   desc: string;
 }
 
+const ALL_CATEGORIES: CategoryItem[] = [
+  {
+    name: 'Fantastik',
+    icon: <Wand2 className="w-5 h-5" />,
+    color: 'text-purple-600 dark:text-purple-400',
+    bgColor: 'bg-purple-50 dark:bg-purple-950/50',
+    borderColor: 'border-purple-200 dark:border-purple-800/60',
+    desc: 'Sihirli dünyalar, krallıklar ve efsanevi yaratıklar',
+  },
+  {
+    name: 'Bilim Kurgu',
+    icon: <Rocket className="w-5 h-5" />,
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/50',
+    borderColor: 'border-blue-200 dark:border-blue-800/60',
+    desc: 'Gelecek teknolojileri, uzay ve distopik dünyalar',
+  },
+  {
+    name: 'Romantik',
+    icon: <Heart className="w-5 h-5" />,
+    color: 'text-rose-600 dark:text-rose-400',
+    bgColor: 'bg-rose-50 dark:bg-rose-950/50',
+    borderColor: 'border-rose-200 dark:border-rose-800/60',
+    desc: 'Aşk, duygu fırtınaları ve unutulmaz sevdalar',
+  },
+  {
+    name: 'Macera',
+    icon: <MapIcon className="w-5 h-5" />,
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/50',
+    borderColor: 'border-amber-200 dark:border-amber-800/60',
+    desc: 'Keşifler, tehlikeli görevler ve heyecan dolu yolculuklar',
+  },
+  {
+    name: 'Genç Kurgu',
+    icon: <Zap className="w-5 h-5" />,
+    color: 'text-emerald-600 dark:text-emerald-400',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950/50',
+    borderColor: 'border-emerald-200 dark:border-emerald-800/60',
+    desc: 'Gençlik heyecanları, okul hayatı ve arkadaşlıklar',
+  },
+  {
+    name: 'Hayran Kurgu',
+    icon: <Star className="w-5 h-5" />,
+    color: 'text-pink-600 dark:text-pink-400',
+    bgColor: 'bg-pink-50 dark:bg-pink-950/50',
+    borderColor: 'border-pink-200 dark:border-pink-800/60',
+    desc: 'Sevilen evrenlerin hayran kalemiyle yeniden kurgulanışı',
+  },
+  {
+    name: 'Mitoloji',
+    icon: <Crown className="w-5 h-5" />,
+    color: 'text-amber-700 dark:text-amber-300',
+    bgColor: 'bg-amber-100/60 dark:bg-amber-950/40',
+    borderColor: 'border-amber-300 dark:border-amber-800/80',
+    desc: 'Tanrılar, antik efsaneler ve kadim destanlar',
+  },
+  {
+    name: 'Dram',
+    icon: <Frown className="w-5 h-5" />,
+    color: 'text-indigo-600 dark:text-indigo-400',
+    bgColor: 'bg-indigo-50 dark:bg-indigo-950/50',
+    borderColor: 'border-indigo-200 dark:border-indigo-800/60',
+    desc: 'Derin hayat hikayeleri ve insan ilişkileri',
+  },
+  {
+    name: 'LGBTQ+',
+    icon: <Sparkles className="w-5 h-5" />,
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-50 dark:bg-violet-950/50',
+    borderColor: 'border-violet-200 dark:border-violet-800/60',
+    desc: 'Çeşitlilik, aşk ve kimlik anlatıları',
+  },
+  {
+    name: 'Şiir',
+    icon: <Feather className="w-5 h-5" />,
+    color: 'text-teal-600 dark:text-teal-400',
+    bgColor: 'bg-teal-50 dark:bg-teal-950/50',
+    borderColor: 'border-teal-200 dark:border-teal-800/60',
+    desc: 'Dize dize duygusal anlatımlar ve özgün şiirler',
+  },
+  {
+    name: 'Mizah',
+    icon: <Smile className="w-5 h-5" />,
+    color: 'text-yellow-600 dark:text-yellow-400',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-950/50',
+    borderColor: 'border-yellow-200 dark:border-yellow-800/60',
+    desc: 'Eğlenceli hikayeler, komedi ve gülümseten satırlar',
+  },
+  {
+    name: 'Gizem / Gerilim',
+    icon: <Compass className="w-5 h-5" />,
+    color: 'text-slate-700 dark:text-slate-300',
+    bgColor: 'bg-slate-100 dark:bg-slate-800/80',
+    borderColor: 'border-slate-300 dark:border-slate-700',
+    desc: 'Sır perdesi, zeka oyunları ve beklenmedik sonlar',
+  },
+  {
+    name: 'Gizem',
+    icon: <Search className="w-5 h-5" />,
+    color: 'text-slate-700 dark:text-slate-300',
+    bgColor: 'bg-slate-100 dark:bg-slate-800/80',
+    borderColor: 'border-slate-300 dark:border-slate-700',
+    desc: 'Sır perdesi ve bilinmezliğe sürükleyici yolculuk',
+  },
+  {
+    name: 'Gerilim',
+    icon: <ShieldAlert className="w-5 h-5" />,
+    color: 'text-orange-700 dark:text-orange-400',
+    bgColor: 'bg-orange-50 dark:bg-orange-950/50',
+    borderColor: 'border-orange-200 dark:border-orange-800/60',
+    desc: 'Nefes kesen temposuyla heyecan dolu anlar',
+  },
+  {
+    name: 'Korku',
+    icon: <Flame className="w-5 h-5" />,
+    color: 'text-red-600 dark:text-red-400',
+    bgColor: 'bg-red-50 dark:bg-red-950/50',
+    borderColor: 'border-red-200 dark:border-red-800/60',
+    desc: 'Karanlık varlıklar ve tüyler ürperten hikayeler',
+  },
+  {
+    name: 'Polisiye',
+    icon: <Shield className="w-5 h-5" />,
+    color: 'text-slate-800 dark:text-slate-200',
+    bgColor: 'bg-slate-200/70 dark:bg-slate-800',
+    borderColor: 'border-slate-400 dark:border-slate-600',
+    desc: 'Dedektif vakaları, suç soruşturmaları ve iz takibi',
+  },
+  {
+    name: 'Paranormal',
+    icon: <Moon className="w-5 h-5" />,
+    color: 'text-indigo-700 dark:text-indigo-300',
+    bgColor: 'bg-indigo-100/70 dark:bg-indigo-950/60',
+    borderColor: 'border-indigo-300 dark:border-indigo-800',
+    desc: 'Doğaüstü olaylar, gizemli güçler ve varlıklar',
+  },
+  {
+    name: 'Aksiyon',
+    icon: <Zap className="w-5 h-5" />,
+    color: 'text-orange-600 dark:text-orange-400',
+    bgColor: 'bg-orange-50 dark:bg-orange-950/50',
+    borderColor: 'border-orange-200 dark:border-orange-800/60',
+    desc: 'Hızlı tempolu sahneler ve amansız mücadeleler',
+  },
+  {
+    name: 'Psikoloji',
+    icon: <Brain className="w-5 h-5" />,
+    color: 'text-fuchsia-600 dark:text-fuchsia-400',
+    bgColor: 'bg-fuchsia-50 dark:bg-fuchsia-950/50',
+    borderColor: 'border-fuchsia-200 dark:border-fuchsia-800/60',
+    desc: 'Zihnin derinlikleri ve psikolojik analizler',
+  },
+  {
+    name: 'Tarihi',
+    icon: <BookOpen className="w-5 h-5" />,
+    color: 'text-amber-800 dark:text-amber-200',
+    bgColor: 'bg-amber-100/80 dark:bg-amber-900/40',
+    borderColor: 'border-amber-300 dark:border-amber-700',
+    desc: 'Eski çağlar, imparatorluklar ve tarihi dönemler',
+  },
+  {
+    name: 'Felsefe',
+    icon: <Lightbulb className="w-5 h-5" />,
+    color: 'text-purple-700 dark:text-purple-300',
+    bgColor: 'bg-purple-100/60 dark:bg-purple-950/60',
+    borderColor: 'border-purple-300 dark:border-purple-800',
+    desc: 'Varoluşsal sorgulamalar ve düşünsel metinler',
+  },
+  {
+    name: 'Kişisel Blog',
+    icon: <PenTool className="w-5 h-5" />,
+    color: 'text-sky-600 dark:text-sky-400',
+    bgColor: 'bg-sky-50 dark:bg-sky-950/50',
+    borderColor: 'border-sky-200 dark:border-sky-800/60',
+    desc: 'Kişisel anılar, denemeler ve günlük yaşam gözlemleri',
+  },
+  {
+    name: 'Teknoloji',
+    icon: <Cpu className="w-5 h-5" />,
+    color: 'text-cyan-600 dark:text-cyan-400',
+    bgColor: 'bg-cyan-50 dark:bg-cyan-950/50',
+    borderColor: 'border-cyan-200 dark:border-cyan-800/60',
+    desc: 'Yazılım, yapay zeka ve gelecek analizleri',
+  },
+  {
+    name: 'Genel',
+    icon: <Grid className="w-5 h-5" />,
+    color: 'text-slate-600 dark:text-slate-400',
+    bgColor: 'bg-slate-100 dark:bg-slate-800/50',
+    borderColor: 'border-slate-200 dark:border-slate-700',
+    desc: 'Her türden serbest metinler ve hibrit hikayeler',
+  },
+];
+
 export const CategoriesModal: React.FC<CategoriesModalProps> = ({
   isOpen,
   onClose,
@@ -62,6 +256,16 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Unconditionally compute filteredCategories hook
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery.trim()) return ALL_CATEGORIES;
+    return ALL_CATEGORIES.filter(c => 
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.desc.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery]);
+
+  // Safe early return after all hooks are evaluated
   if (!isOpen) return null;
 
   // Calculate story counts per category
@@ -71,209 +275,6 @@ export const CategoriesModal: React.FC<CategoriesModalProps> = ({
     }
     return stories.filter(s => s.category === catName && (isNsfwEnabled || !s.isNsfw)).length;
   };
-
-  const ALL_CATEGORIES: CategoryItem[] = [
-    {
-      name: 'Fantastik',
-      icon: <Wand2 className="w-5 h-5" />,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-50 dark:bg-purple-950/50',
-      borderColor: 'border-purple-200 dark:border-purple-800/60',
-      desc: 'Sihirli dünyalar, krallıklar ve efsanevi yaratıklar',
-    },
-    {
-      name: 'Bilim Kurgu',
-      icon: <Rocket className="w-5 h-5" />,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-950/50',
-      borderColor: 'border-blue-200 dark:border-blue-800/60',
-      desc: 'Gelecek teknolojileri, uzay ve distopik dünyalar',
-    },
-    {
-      name: 'Romantik',
-      icon: <Heart className="w-5 h-5" />,
-      color: 'text-rose-600 dark:text-rose-400',
-      bgColor: 'bg-rose-50 dark:bg-rose-950/50',
-      borderColor: 'border-rose-200 dark:border-rose-800/60',
-      desc: 'Aşk, duygu fırtınaları ve unutulmaz sevdalar',
-    },
-    {
-      name: 'Macera',
-      icon: <MapIcon className="w-5 h-5" />,
-      color: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-50 dark:bg-amber-950/50',
-      borderColor: 'border-amber-200 dark:border-amber-800/60',
-      desc: 'Keşifler, tehlikeli görevler ve heyecan dolu yolculuklar',
-    },
-    {
-      name: 'Genç Kurgu',
-      icon: <Zap className="w-5 h-5" />,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-950/50',
-      borderColor: 'border-emerald-200 dark:border-emerald-800/60',
-      desc: 'Gençlik heyecanları, okul hayatı ve arkadaşlıklar',
-    },
-    {
-      name: 'Hayran Kurgu',
-      icon: <Star className="w-5 h-5" />,
-      color: 'text-pink-600 dark:text-pink-400',
-      bgColor: 'bg-pink-50 dark:bg-pink-950/50',
-      borderColor: 'border-pink-200 dark:border-pink-800/60',
-      desc: 'Sevilen evrenlerin hayran kalemiyle yeniden kurgulanışı',
-    },
-    {
-      name: 'Mitoloji',
-      icon: <Crown className="w-5 h-5" />,
-      color: 'text-amber-700 dark:text-amber-300',
-      bgColor: 'bg-amber-100/60 dark:bg-amber-950/40',
-      borderColor: 'border-amber-300 dark:border-amber-800/80',
-      desc: 'Tanrılar, antik efsaneler ve kadim destanlar',
-    },
-    {
-      name: 'Dram',
-      icon: <Frown className="w-5 h-5" />,
-      color: 'text-indigo-600 dark:text-indigo-400',
-      bgColor: 'bg-indigo-50 dark:bg-indigo-950/50',
-      borderColor: 'border-indigo-200 dark:border-indigo-800/60',
-      desc: 'Derin hayat hikayeleri ve insan ilişkileri',
-    },
-    {
-      name: 'LGBTQ+',
-      icon: <Sparkles className="w-5 h-5" />,
-      color: 'text-violet-600 dark:text-violet-400',
-      bgColor: 'bg-violet-50 dark:bg-violet-950/50',
-      borderColor: 'border-violet-200 dark:border-violet-800/60',
-      desc: 'Çeşitlilik, aşk ve kimlik anlatıları',
-    },
-    {
-      name: 'Şiir',
-      icon: <Feather className="w-5 h-5" />,
-      color: 'text-teal-600 dark:text-teal-400',
-      bgColor: 'bg-teal-50 dark:bg-teal-950/50',
-      borderColor: 'border-teal-200 dark:border-teal-800/60',
-      desc: 'Dize dize duygusal anlatımlar ve özgün şiirler',
-    },
-    {
-      name: 'Mizah',
-      icon: <Smile className="w-5 h-5" />,
-      color: 'text-yellow-600 dark:text-yellow-400',
-      bgColor: 'bg-yellow-50 dark:bg-yellow-950/50',
-      borderColor: 'border-yellow-200 dark:border-yellow-800/60',
-      desc: 'Eğlenceli hikayeler, komedi ve gülümseten satırlar',
-    },
-    {
-      name: 'Gizem / Gerilim',
-      icon: <Compass className="w-5 h-5" />,
-      color: 'text-slate-700 dark:text-slate-300',
-      bgColor: 'bg-slate-100 dark:bg-slate-800/80',
-      borderColor: 'border-slate-300 dark:border-slate-700',
-      desc: 'Sır perdesi, zeka oyunları ve beklenmedik sonlar',
-    },
-    {
-      name: 'Gizem',
-      icon: <Search className="w-5 h-5" />,
-      color: 'text-slate-700 dark:text-slate-300',
-      bgColor: 'bg-slate-100 dark:bg-slate-800/80',
-      borderColor: 'border-slate-300 dark:border-slate-700',
-      desc: 'Sır perdesi ve bilinmezliğe sürükleyici yolculuk',
-    },
-    {
-      name: 'Gerilim',
-      icon: <ShieldAlert className="w-5 h-5" />,
-      color: 'text-orange-700 dark:text-orange-400',
-      bgColor: 'bg-orange-50 dark:bg-orange-950/50',
-      borderColor: 'border-orange-200 dark:border-orange-800/60',
-      desc: 'Nefes kesen temposuyla heyecan dolu anlar',
-    },
-    {
-      name: 'Korku',
-      icon: <Flame className="w-5 h-5" />,
-      color: 'text-red-600 dark:text-red-400',
-      bgColor: 'bg-red-50 dark:bg-red-950/50',
-      borderColor: 'border-red-200 dark:border-red-800/60',
-      desc: 'Karanlık varlıklar ve tüyler ürperten hikayeler',
-    },
-    {
-      name: 'Polisiye',
-      icon: <Shield className="w-5 h-5" />,
-      color: 'text-slate-800 dark:text-slate-200',
-      bgColor: 'bg-slate-200/70 dark:bg-slate-800',
-      borderColor: 'border-slate-400 dark:border-slate-600',
-      desc: 'Dedektif vakaları, suç soruşturmaları ve iz takibi',
-    },
-    {
-      name: 'Paranormal',
-      icon: <Moon className="w-5 h-5" />,
-      color: 'text-indigo-700 dark:text-indigo-300',
-      bgColor: 'bg-indigo-100/70 dark:bg-indigo-950/60',
-      borderColor: 'border-indigo-300 dark:border-indigo-800',
-      desc: 'Doğaüstü olaylar, gizemli güçler ve varlıklar',
-    },
-    {
-      name: 'Aksiyon',
-      icon: <Zap className="w-5 h-5" />,
-      color: 'text-orange-600 dark:text-orange-400',
-      bgColor: 'bg-orange-50 dark:bg-orange-950/50',
-      borderColor: 'border-orange-200 dark:border-orange-800/60',
-      desc: 'Hızlı tempolu sahneler ve amansız mücadeleler',
-    },
-    {
-      name: 'Psikoloji',
-      icon: <Brain className="w-5 h-5" />,
-      color: 'text-fuchsia-600 dark:text-fuchsia-400',
-      bgColor: 'bg-fuchsia-50 dark:bg-fuchsia-950/50',
-      borderColor: 'border-fuchsia-200 dark:border-fuchsia-800/60',
-      desc: 'Zihnin derinlikleri ve psikolojik analizler',
-    },
-    {
-      name: 'Tarihi',
-      icon: <BookOpen className="w-5 h-5" />,
-      color: 'text-amber-800 dark:text-amber-200',
-      bgColor: 'bg-amber-100/80 dark:bg-amber-900/40',
-      borderColor: 'border-amber-300 dark:border-amber-700',
-      desc: 'Eski çağlar, imparatorluklar ve tarihi dönemler',
-    },
-    {
-      name: 'Felsefe',
-      icon: <Lightbulb className="w-5 h-5" />,
-      color: 'text-purple-700 dark:text-purple-300',
-      bgColor: 'bg-purple-100/60 dark:bg-purple-950/60',
-      borderColor: 'border-purple-300 dark:border-purple-800',
-      desc: 'Varoluşsal sorgulamalar ve düşünsel metinler',
-    },
-    {
-      name: 'Kişisel Blog',
-      icon: <PenTool className="w-5 h-5" />,
-      color: 'text-sky-600 dark:text-sky-400',
-      bgColor: 'bg-sky-50 dark:bg-sky-950/50',
-      borderColor: 'border-sky-200 dark:border-sky-800/60',
-      desc: 'Kişisel anılar, denemeler ve günlük yaşam gözlemleri',
-    },
-    {
-      name: 'Teknoloji',
-      icon: <Cpu className="w-5 h-5" />,
-      color: 'text-cyan-600 dark:text-cyan-400',
-      bgColor: 'bg-cyan-50 dark:bg-cyan-950/50',
-      borderColor: 'border-cyan-200 dark:border-cyan-800/60',
-      desc: 'Yazılım, yapay zeka ve gelecek analizleri',
-    },
-    {
-      name: 'Genel',
-      icon: <Grid className="w-5 h-5" />,
-      color: 'text-slate-600 dark:text-slate-400',
-      bgColor: 'bg-slate-100 dark:bg-slate-800/50',
-      borderColor: 'border-slate-200 dark:border-slate-700',
-      desc: 'Her türden serbest metinler ve hibrit hikayeler',
-    },
-  ];
-
-  const filteredCategories = useMemo(() => {
-    if (!searchQuery.trim()) return ALL_CATEGORIES;
-    return ALL_CATEGORIES.filter(c => 
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.desc.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
 
   const handleSelect = (category: Category | 'Tümü') => {
     setSelectedCategoryFilter(category);
