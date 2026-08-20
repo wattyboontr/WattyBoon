@@ -37,7 +37,7 @@ try {
     ignoreUndefinedProperties: true,
   }, databaseId === '(default)' ? undefined : databaseId);
 } catch {
-  firestoreInstance = getFirestore(app, databaseId);
+  firestoreInstance = databaseId === '(default)' ? getFirestore(app) : getFirestore(app, databaseId);
 }
 
 export const db = firestoreInstance;

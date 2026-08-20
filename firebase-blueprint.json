@@ -11,8 +11,8 @@
         "email": { "type": "string" },
         "avatar": { "type": "string" },
         "bio": { "type": "string" },
-        "followers": { "type": "array", "items": { "type": "string" } },
-        "following": { "type": "array", "items": { "type": "string" } },
+        "followers": { "type": "array" },
+        "following": { "type": "array" },
         "joinedDate": { "type": "string" },
         "library": { "type": "array" },
         "readingProgress": { "type": "array" },
@@ -30,7 +30,7 @@
         "summary": { "type": "string" },
         "coverUrl": { "type": "string" },
         "category": { "type": "string" },
-        "tags": { "type": "array", "items": { "type": "string" } },
+        "tags": { "type": "array" },
         "authorId": { "type": "string" },
         "authorName": { "type": "string" },
         "authorUsername": { "type": "string" },
@@ -45,7 +45,7 @@
         "readTime": { "type": "string" },
         "chapters": { "type": "array" },
         "comments": { "type": "array" },
-        "likedBy": { "type": "array", "items": { "type": "string" } },
+        "likedBy": { "type": "array" },
         "rating": { "type": "number" }
       },
       "required": ["id", "title", "authorId"]
@@ -58,10 +58,12 @@
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
         "message": { "type": "string" },
         "createdAt": { "type": "string" },
         "isRead": { "type": "boolean" }
-      }
+      },
+      "required": ["id", "userId", "message"]
     },
     "messages": {
       "title": "Message",
@@ -74,7 +76,8 @@
         "content": { "type": "string" },
         "createdAt": { "type": "string" },
         "isRead": { "type": "boolean" }
-      }
+      },
+      "required": ["id", "senderId", "receiverId", "content"]
     },
     "paragraphComments": {
       "title": "ParagraphComment",
@@ -87,7 +90,52 @@
         "paragraphIndex": { "type": "number" },
         "userId": { "type": "string" },
         "content": { "type": "string" }
-      }
+      },
+      "required": ["id", "storyId", "userId", "content"]
+    },
+    "forumTopics": {
+      "title": "ForumTopic",
+      "description": "Community forum topics and discussion threads",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "replies": { "type": "array" },
+        "views": { "type": "number" },
+        "likes": { "type": "number" }
+      },
+      "required": ["id", "title", "authorId", "content"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "users" },
+      "description": "User profiles and custom lists"
+    },
+    "/stories/{storyId}": {
+      "schema": { "$ref": "stories" },
+      "description": "Stories with chapters and comments"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "notifications" },
+      "description": "User notifications"
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "messages" },
+      "description": "User direct messages"
+    },
+    "/paragraphComments/{commentId}": {
+      "schema": { "$ref": "paragraphComments" },
+      "description": "Paragraph level comments"
+    },
+    "/forumTopics/{topicId}": {
+      "schema": { "$ref": "forumTopics" },
+      "description": "Forum topics and community discussions"
     }
   }
 }
