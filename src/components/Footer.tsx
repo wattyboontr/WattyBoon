@@ -142,7 +142,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
             <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
               <li>
                 <a
-                  href="https://instagram.com/wattyboon"
+                  href="https://www.instagram.com/wattyboon.tr/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-pink-600 dark:hover:text-pink-400 transition-colors flex items-center gap-2.5 group"
@@ -155,7 +155,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
               </li>
               <li>
                 <a
-                  href="https://x.com/wattyboon"
+                  href="https://x.com/WattyBoon"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-2.5 group"
@@ -181,7 +181,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
               </li>
               <li>
                 <a
-                  href="mailto:iletisim@wattyboon.com"
+                  href="mailto:wattyboontr@gmail.com"
                   className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-2.5 group"
                 >
                   <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
