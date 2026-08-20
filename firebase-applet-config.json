@@ -3,6 +3,7 @@
   "appId": "1:227047858074:web:fcbbb65ae4256bcd3be423",
   "apiKey": "AIzaSyBTtB_MP70tOJ-gZa0B6YF8OOJaKIloabk",
   "authDomain": "wattyboon-94c69.firebaseapp.com",
+  "databaseURL": "https://wattyboon-94c69-default-rtdb.europe-west1.firebasedatabase.app",
   "firestoreDatabaseId": "(default)",
   "storageBucket": "wattyboon-94c69.firebasestorage.app",
   "messagingSenderId": "227047858074",

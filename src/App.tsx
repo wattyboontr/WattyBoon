@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { HomeView } from './components/HomeView';
 import { ExploreView } from './components/ExploreView';
 import { CategoriesView } from './components/CategoriesView';
 import { LibraryView } from './components/LibraryView';
@@ -121,6 +122,7 @@ const AppContent: React.FC = () => {
       <Header onOpenInfoModal={openInfoModal} />
 
       <main className="flex-1">
+        {activeView === 'home' && <HomeView />}
         {activeView === 'explore' && <ExploreView />}
         {activeView === 'categories' && <CategoriesView />}
         {activeView === 'story-detail' && <StoryDetailView />}

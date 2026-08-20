@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply } from '../types';
+import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply, ViewType } from '../types';
 import { INITIAL_STORIES, INITIAL_USERS, INITIAL_NOTIFICATIONS, INITIAL_MESSAGES } from '../data/mockData';
-import { db, auth } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, getDoc } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
@@ -25,7 +25,7 @@ const syncUserToFirestore = async (user: User) => {
   try {
     await setDoc(doc(db, 'users', user.id), user, { merge: true });
   } catch (err) {
-    console.error('Firestore syncUser error:', err);
+    handleFirestoreError(err, OperationType.WRITE, `users/${user.id}`);
   }
 };
 
@@ -33,7 +33,7 @@ const syncStoryToFirestore = async (story: Story) => {
   try {
     await setDoc(doc(db, 'stories', story.id), story, { merge: true });
   } catch (err) {
-    console.error('Firestore syncStory error:', err);
+    handleFirestoreError(err, OperationType.WRITE, `stories/${story.id}`);
   }
 };
 
@@ -41,7 +41,7 @@ const deleteStoryFromFirestore = async (storyId: string) => {
   try {
     await deleteDoc(doc(db, 'stories', storyId));
   } catch (err) {
-    console.error('Firestore deleteStory error:', err);
+    handleFirestoreError(err, OperationType.DELETE, `stories/${storyId}`);
   }
 };
 
@@ -49,7 +49,7 @@ const syncNotificationToFirestore = async (notif: AppNotification) => {
   try {
     await setDoc(doc(db, 'notifications', notif.id), notif, { merge: true });
   } catch (err) {
-    console.error('Firestore syncNotification error:', err);
+    handleFirestoreError(err, OperationType.WRITE, `notifications/${notif.id}`);
   }
 };
 
@@ -57,7 +57,7 @@ const syncMessageToFirestore = async (msg: DirectMessage) => {
   try {
     await setDoc(doc(db, 'messages', msg.id), msg, { merge: true });
   } catch (err) {
-    console.error('Firestore syncMessage error:', err);
+    handleFirestoreError(err, OperationType.WRITE, `messages/${msg.id}`);
   }
 };
 
@@ -65,7 +65,7 @@ const syncParagraphCommentToFirestore = async (pcomm: ParagraphComment) => {
   try {
     await setDoc(doc(db, 'paragraphComments', pcomm.id), pcomm, { merge: true });
   } catch (err) {
-    console.error('Firestore syncParagraphComment error:', err);
+    handleFirestoreError(err, OperationType.WRITE, `paragraphComments/${pcomm.id}`);
   }
 };
 
@@ -73,7 +73,7 @@ const syncForumTopicToFirestore = async (topic: ForumTopic) => {
   try {
     await setDoc(doc(db, 'forumTopics', topic.id), topic, { merge: true });
   } catch (err) {
-    console.error('Firestore syncForumTopic error:', err);
+    handleFirestoreError(err, OperationType.WRITE, `forumTopics/${topic.id}`);
   }
 };
 
@@ -81,7 +81,7 @@ const deleteForumTopicFromFirestore = async (topicId: string) => {
   try {
     await deleteDoc(doc(db, 'forumTopics', topicId));
   } catch (err) {
-    console.error('Firestore deleteForumTopic error:', err);
+    handleFirestoreError(err, OperationType.DELETE, `forumTopics/${topicId}`);
   }
 };
 
@@ -89,7 +89,7 @@ const deleteParagraphCommentFromFirestore = async (commentId: string) => {
   try {
     await deleteDoc(doc(db, 'paragraphComments', commentId));
   } catch (err) {
-    console.error('Firestore deleteParagraphComment error:', err);
+    handleFirestoreError(err, OperationType.DELETE, `paragraphComments/${commentId}`);
   }
 };
 
@@ -143,7 +143,7 @@ const deleteCommentFromList = (comments: Comment[], commentId: string): Comment[
     }));
 };
 
-export type ViewType = 'explore' | 'categories' | 'library' | 'editor' | 'profile' | 'reader' | 'notifications' | 'story-detail' | 'forum';
+export type { ViewType };
 
 interface AppContextType {
   // Theme
@@ -855,8 +855,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const kategori = params.get('kategori');
       const etiket = params.get('etiket') || undefined;
 
-      let view: ViewType = 'explore';
-      if (sayfa === 'kategoriler' || sayfa === 'kategori') view = 'categories';
+      let view: ViewType = 'home';
+      if (sayfa === 'anasayfa' || sayfa === 'home') view = 'home';
+      else if (sayfa === 'kesfet' || sayfa === 'explore' || sayfa === 'arama' || sayfa === 'ara') view = 'explore';
+      else if (sayfa === 'kategoriler' || sayfa === 'kategori') view = 'categories';
       else if (sayfa === 'kutuphanem' || sayfa === 'kutuphane' || sayfa === 'library') view = 'library';
       else if (sayfa === 'forum' || sayfa === 'tartisma') view = 'forum';
       else if (sayfa === 'yaz' || sayfa === 'editor') view = 'editor';
@@ -877,7 +879,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     } catch {
       return {
-        view: 'explore',
+        view: 'home',
         storyId: 'story_1',
         chapterIndex: 0,
         authorId: null,
@@ -913,6 +915,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let title = 'WattyBoon';
 
     switch (view) {
+      case 'home': {
+        url = '/';
+        title = 'WattyBoon | Ana Sayfa - Edebiyat ve Hikaye Dünyası';
+        break;
+      }
       case 'explore': {
         const params = new URLSearchParams();
         params.set('sayfa', 'kesfet');

@@ -27,17 +27,15 @@ if ((appletConfig as any).measurementId) {
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-const databaseId = (appletConfig as any).firestoreDatabaseId || '(default)';
-
-// Initialize Firestore with robust long-polling to prevent WebChannelConnection stream transport errors in container/proxy environments
+// Initialize Firestore with robust auto-detect long polling
 let firestoreInstance;
 try {
   firestoreInstance = initializeFirestore(app, {
     experimentalAutoDetectLongPolling: true,
     ignoreUndefinedProperties: true,
-  }, databaseId === '(default)' ? undefined : databaseId);
+  });
 } catch {
-  firestoreInstance = databaseId === '(default)' ? getFirestore(app) : getFirestore(app, databaseId);
+  firestoreInstance = getFirestore(app);
 }
 
 export const db = firestoreInstance;

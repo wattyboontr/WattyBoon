@@ -21,8 +21,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
           <div className="space-y-3">
             <div 
               onClick={() => {
-                setSelectedCategoryFilter('Tümü');
-                setActiveView('explore');
+                setActiveView('home');
               }}
               className="cursor-pointer group select-none inline-block hover:opacity-90 transition-opacity"
             >
@@ -36,18 +35,27 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
           {/* Platform Navigation */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Keşfet & Oku
+              Gezinme & Keşif
             </h4>
             <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
               <li>
                 <button 
                   onClick={() => {
-                    setSelectedCategoryFilter('Tümü');
+                    setActiveView('home');
+                  }} 
+                  className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  Ana Sayfa
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => {
                     setActiveView('explore');
                   }} 
-                  className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex items-center gap-1.5"
+                  className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Compass className="w-3.5 h-3.5" /> Trend Hikayeler
+                  <Compass className="w-3.5 h-3.5" /> Keşfet
                 </button>
               </li>
               <li>

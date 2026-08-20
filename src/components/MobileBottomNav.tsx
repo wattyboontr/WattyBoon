@@ -12,13 +12,17 @@ export const MobileBottomNav: React.FC = () => {
 
   const navItems = [
     {
-      id: 'explore',
+      id: 'home',
       label: 'Ana Sayfa',
       icon: Home,
-      onClick: () => {
-        setSelectedCategoryFilter('Tümü');
-        setActiveView('explore');
-      },
+      onClick: () => setActiveView('home'),
+      isActive: activeView === 'home',
+    },
+    {
+      id: 'explore',
+      label: 'Keşfet',
+      icon: Compass,
+      onClick: () => setActiveView('explore'),
       isActive: activeView === 'explore',
     },
     {
@@ -34,13 +38,6 @@ export const MobileBottomNav: React.FC = () => {
       icon: PenTool,
       onClick: () => openStoryEditor(null),
       isActive: activeView === 'editor',
-    },
-    {
-      id: 'forum',
-      label: 'Forum',
-      icon: MessageSquare,
-      onClick: () => setActiveView('forum'),
-      isActive: activeView === 'forum',
     },
     {
       id: 'profile',

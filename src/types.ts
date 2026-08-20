@@ -166,6 +166,18 @@ export interface AppNotification {
   createdAt: string;
 }
 
+export type ViewType = 
+  | 'home'
+  | 'explore'
+  | 'categories'
+  | 'library'
+  | 'editor'
+  | 'profile'
+  | 'reader'
+  | 'notifications'
+  | 'story-detail'
+  | 'forum';
+
 export interface SearchFilters {
   query: string;
   category: Category | 'Tümü';

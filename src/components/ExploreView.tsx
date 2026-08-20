@@ -6,26 +6,18 @@ import { Category, SearchFilters } from '../types';
 import { 
   Search, 
   Sparkles, 
-  TrendingUp, 
   SlidersHorizontal, 
   Grid, 
   List, 
   BookOpen, 
-  UserPlus, 
-  UserCheck, 
   Flame, 
   Star, 
   FilterX,
   X,
-  Clock,
-  Play,
-  CheckCircle2,
-  ShieldAlert,
   PenTool,
   Wand2,
   Rocket,
   Heart,
-  Eye,
   Map as MapIcon,
   Zap,
   Crown,
@@ -38,7 +30,7 @@ import {
   Brain,
   Lightbulb,
   Cpu,
-  Headphones
+  ArrowRight
 } from 'lucide-react';
 
 const CATEGORIES: (Category | 'Tümü')[] = [
@@ -98,26 +90,14 @@ const getCategoryIcon = (category: string) => {
   }
 };
 
-interface ExploreViewProps {
-  onOpenCategoriesModal?: () => void;
-}
-
-export const ExploreView: React.FC<ExploreViewProps> = () => {
+export const ExploreView: React.FC = () => {
   const { 
     stories, 
-    users, 
     currentUser, 
-    isNsfwEnabled,
     selectedCategoryFilter,
     setSelectedCategoryFilter,
     selectedTagFilter,
     setSelectedTagFilter,
-    toggleFollowUser, 
-    openStoryDetail, 
-    openStoryReader, 
-    openAuthorProfile, 
-    toggleLibraryStory, 
-    isStoryInLibrary,
     openStoryEditor,
     setActiveView
   } = useApp();
@@ -127,10 +107,13 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
     category: selectedCategoryFilter || 'Tümü',
     sortBy: 'popular',
     status: 'all',
-    tag: undefined,
+    tag: selectedTagFilter,
   });
 
-  // Sync state when global category or tag selection changes from anywhere
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'horizontal'>('grid');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
+
+  // Sync state when global category or tag selection changes
   useEffect(() => {
     setFilters((prev) => ({ 
       ...prev, 
@@ -139,9 +122,6 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
     }));
   }, [selectedCategoryFilter, selectedTagFilter]);
 
-  const [layoutMode, setLayoutMode] = useState<'grid' | 'horizontal'>('grid');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
-
   // Filter public stories
   const availableStories = useMemo(() => {
     return stories.filter((s) => {
@@ -149,13 +129,6 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
       return isVisible;
     });
   }, [stories, currentUser]);
-
-  // Featured Story for Hero Banner
-  const featuredStory = useMemo(() => {
-    return availableStories.reduce((prev, current) => 
-      (prev.reads + prev.likes * 2) > (current.reads + current.likes * 2) ? prev : current
-    , availableStories[0]);
-  }, [availableStories]);
 
   // All available tags added by authors
   const popularTags = useMemo(() => {
@@ -167,125 +140,11 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
     });
     return Array.from(tagMap.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 24)
+      .slice(0, 30)
       .map(([tag]) => tag);
   }, [availableStories]);
 
-  // Stories to Continue Reading (Okumaya Devam Et)
-  const continueReadingList = useMemo(() => {
-    if (!currentUser || !currentUser.readingProgress) return [];
-    return currentUser.readingProgress
-      .map((progress) => {
-        const story = stories.find((s) => s.id === progress.storyId);
-        if (!story) return null;
-        return {
-          story,
-          lastChapterIndex: progress.lastChapterIndex,
-          updatedAt: progress.updatedAt,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => item !== null)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [currentUser, stories]);
-
-  // Featured Stories sorted by most likes & reads (Öne Çıkan & En Çok Beğenilen Hikayeler)
-  const mostLikedStories = useMemo(() => {
-    return [...availableStories]
-      .sort((a, b) => {
-        if (b.likes !== a.likes) return b.likes - a.likes;
-        return b.reads - a.reads;
-      })
-      .slice(0, 8);
-  }, [availableStories]);
-
-  // Featured Authors: Only users who have written stories, sorted by total story likes (Hikayesi en çok beğeni alan yazarlar)
-  const sortedFeaturedAuthors = useMemo(() => {
-    return users
-      .filter((u) => u && u.id && u.name)
-      .map((author) => {
-        const authorStories = stories.filter((s) => s.authorId === author.id && s.visibility === 'public');
-        const totalLikes = authorStories.reduce((acc, s) => acc + (s.likes || 0), 0);
-        const totalReads = authorStories.reduce((acc, s) => acc + (s.reads || 0), 0);
-        return {
-          ...author,
-          authorStoriesCount: authorStories.length,
-          totalLikes,
-          totalReads,
-        };
-      })
-      .filter((author) => author.authorStoriesCount > 0) // Sadece hikaye yazan kişiler görünsün
-      .sort((a, b) => {
-        if (b.totalLikes !== a.totalLikes) return b.totalLikes - a.totalLikes; // En çok beğeni alan üye en başta
-        if (b.totalReads !== a.totalReads) return b.totalReads - a.totalReads;
-        return (b.followers?.length || 0) - (a.followers?.length || 0);
-      });
-  }, [users, stories]);
-
-  // Recommended Stories (Önerilen Hikayeler)
-  const recommendedStories = useMemo(() => {
-    return [...availableStories]
-      .sort((a, b) => (b.reads * 0.4 + b.likes * 0.6) - (a.reads * 0.4 + a.likes * 0.6))
-      .slice(0, 8);
-  }, [availableStories]);
-
-  // Personalized Stories for user (Sana Özel - Okuma geçmişi ve ilgi duyduğu türlere göre)
-  const personalizedStories = useMemo(() => {
-    if (!availableStories.length) return [];
-    
-    const categoryWeights: Record<string, number> = {};
-    if (currentUser) {
-      currentUser.library?.forEach((item) => {
-        const s = stories.find((st) => st.id === item.storyId);
-        if (s?.category) {
-          categoryWeights[s.category] = (categoryWeights[s.category] || 0) + 3;
-        }
-      });
-      currentUser.readingProgress?.forEach((item) => {
-        const s = stories.find((st) => st.id === item.storyId);
-        if (s?.category) {
-          categoryWeights[s.category] = (categoryWeights[s.category] || 0) + 2;
-        }
-      });
-    }
-
-    const preferredCategories = Object.keys(categoryWeights);
-
-    if (preferredCategories.length > 0) {
-      return [...availableStories]
-        .filter((s) => preferredCategories.includes(s.category))
-        .sort((a, b) => {
-          const scoreA = (categoryWeights[a.category] || 0) + a.likes * 0.1;
-          const scoreB = (categoryWeights[b.category] || 0) + b.likes * 0.1;
-          return scoreB - scoreA;
-        })
-        .slice(0, 8);
-    }
-
-    return [...availableStories]
-      .sort((a, b) => (b.likes * 2 + b.reads) - (a.likes * 2 + a.reads))
-      .slice(0, 8);
-  }, [currentUser, availableStories, stories]);
-
-  // Short Stories Band (Kısa Hikayeler)
-  const shortStories = useMemo(() => {
-    return [...availableStories]
-      .filter((s) => s.isShortStory || s.readingTimeMinutes <= 7 || s.chapters.length === 1)
-      .sort((a, b) => {
-        if (a.isShortStory !== b.isShortStory) return a.isShortStory ? -1 : 1;
-        return b.likes - a.likes;
-      })
-      .slice(0, 8);
-  }, [availableStories]);
-
-  // Completed Stories (Tamamlanan Hikayeler) - Yalnızca Tamamlandı olarak işaretlenenler
-  const completedStories = useMemo(() => {
-    return availableStories
-      .filter((s) => s.status === 'completed' || s.isCompleted === true)
-      .sort((a, b) => b.reads - a.reads)
-      .slice(0, 8);
-  }, [availableStories]);
-
-  // Filtered stories result
+  // Filtered stories calculation
   const filteredStories = useMemo(() => {
     return availableStories.filter((story) => {
       // Query filter
@@ -350,8 +209,23 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 animate-fade-in pb-24 md:pb-12">
       
-      {/* 1. Main Search & Categorization Bar (EN ÜSTTE) */}
-      <section className="space-y-3.5">
+      {/* Keşfet Başlığı */}
+      <div className="space-y-1.5 border-b border-purple-100 dark:border-purple-900/30 pb-4">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-2xl bg-purple-600 text-white shadow-md shadow-purple-500/20">
+            <Compass className="w-5 h-5" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Keşfet
+          </h1>
+        </div>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          Binlerce hikaye, yazar, edebiyat kategorisi ve popüler etiket arasında dilediğin gibi arama yap.
+        </p>
+      </div>
+
+      {/* Main Search & Categorization Bar */}
+      <section className="space-y-4">
         
         {/* Search Input & Control Buttons */}
         <div className="flex flex-col sm:flex-row items-stretch gap-3">
@@ -361,13 +235,14 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
               type="text"
               value={filters.query}
               onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
-              placeholder="Hikaye başlığı, yazar, konu veya #etiket ara..."
-              className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-sm transition-all"
+              placeholder="Hikaye başlığı, yazar adı, konu veya #etiket ara..."
+              className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-sm transition-all text-sm font-medium"
             />
             {filters.query && (
               <button 
                 onClick={() => setFilters((prev) => ({ ...prev, query: '' }))}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                title="Aramayı temizle"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -378,21 +253,21 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
             {/* Filter Toggle Button */}
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={`flex items-center gap-2 px-4 py-3.5 rounded-2xl border font-bold text-xs transition-all ${
-                showAdvancedFilters || filters.status !== 'all' || filters.tag
+              className={`flex items-center gap-2 px-4 py-3.5 rounded-2xl border font-bold text-xs transition-all cursor-pointer ${
+                showAdvancedFilters || filters.status !== 'all' || filters.sortBy !== 'popular'
                   ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-purple-300'
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
-              <span className="hidden sm:inline">Gelişmiş Filtreler</span>
+              <span>Gelişmiş Süzgeçler</span>
             </button>
 
             {/* Layout Mode Toggle */}
             <div className="flex items-center p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl">
               <button
                 onClick={() => setLayoutMode('grid')}
-                className={`p-2.5 rounded-xl transition-colors ${
+                className={`p-2.5 rounded-xl transition-colors cursor-pointer ${
                   layoutMode === 'grid' ? 'bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-300 font-bold' : 'text-slate-400'
                 }`}
                 title="Izgara Görünümü"
@@ -401,7 +276,7 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
               </button>
               <button
                 onClick={() => setLayoutMode('horizontal')}
-                className={`p-2.5 rounded-xl transition-colors ${
+                className={`p-2.5 rounded-xl transition-colors cursor-pointer ${
                   layoutMode === 'horizontal' ? 'bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-300 font-bold' : 'text-slate-400'
                 }`}
                 title="Liste Görünümü"
@@ -421,7 +296,7 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
                 setSelectedCategoryFilter(cat);
                 setFilters((prev) => ({ ...prev, category: cat }));
               }}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 filters.category === cat
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20'
                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800/80 hover:border-purple-300'
@@ -447,7 +322,7 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
         {popularTags.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-1">
             <span className="text-[11px] font-bold text-slate-400 shrink-0 mr-1 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-purple-500" /> Etiketler:
+              <Sparkles className="w-3 h-3 text-purple-500" /> Popüler Etiketler:
             </span>
             {popularTags.map((t) => {
               const isSelected = filters.tag?.toLowerCase() === t.toLowerCase();
@@ -477,18 +352,17 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
           <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-purple-100 dark:border-purple-900/40 shadow-xl space-y-4 animate-fade-in">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
-                <SlidersHorizontal className="w-4 h-4" /> Arama ve Filtre Detayları
+                <SlidersHorizontal className="w-4 h-4" /> Arama ve Filtre Ayarları
               </h4>
               <button 
                 onClick={clearFilters}
-                className="text-xs text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1"
+                className="text-xs text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1 cursor-pointer"
               >
                 <FilterX className="w-3.5 h-3.5" /> Sıfırla
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              
               {/* Sort By Dropdown */}
               <div>
                 <label className="block text-slate-500 dark:text-slate-400 font-medium mb-1.5">Sıralama Ölçütü</label>
@@ -518,8 +392,6 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
                 </select>
               </div>
 
-              
-
               {/* Genre / Category Filter */}
               <div>
                 <label className="block text-slate-500 dark:text-slate-400 font-medium mb-1.5">Kategori / Tür</label>
@@ -539,413 +411,17 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
                   ))}
                 </select>
               </div>
-
             </div>
           </div>
         )}
 
       </section>
 
-      {/* Continue Reading Section (Okumaya Devam Et) */}
-      {continueReadingList.length > 0 && !filters.query && filters.category === 'Tümü' && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              Okumaya Devam Et
-            </h2>
-            <span className="text-xs text-slate-400 font-medium">Kaldığın yerden sürdür</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {continueReadingList.slice(0, 3).map(({ story, lastChapterIndex }) => {
-              const chapter = story.chapters[lastChapterIndex] || story.chapters[0];
-              const totalChapters = story.chapters.length;
-
-              return (
-                <div
-                  key={story.id}
-                  onClick={() => openStoryReader(story.id, lastChapterIndex)}
-                  className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-purple-500/50 dark:hover:border-purple-500/50 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center gap-3.5 group"
-                >
-                  <img
-                    src={story.coverUrl}
-                    alt={story.title}
-                    className="w-12 h-16 object-cover rounded-xl shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
-                      {story.category}
-                    </span>
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                      {story.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                      Kaldığın Bölüm: <span className="font-semibold text-slate-700 dark:text-slate-300">{chapter ? chapter.title : `Bölüm ${lastChapterIndex + 1}`}</span>
-                    </p>
-                    <div className="mt-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 h-full rounded-full"
-                        style={{ width: `${Math.round(((lastChapterIndex + 1) / totalChapters) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openStoryReader(story.id, lastChapterIndex);
-                    }}
-                    className="p-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-md flex-shrink-0 group-hover:scale-110 transition-transform"
-                    title="Devam Et"
-                  >
-                    <Play className="w-4 h-4 fill-current" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Hero Featured Story Banner (Haftanın Popüleri) */}
-      {featuredStory && !filters.query && filters.category === 'Tümü' && (
-        <section className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/50 dark:from-slate-900 dark:via-slate-900/95 dark:to-purple-950/40 border border-purple-200/80 dark:border-purple-900/60 shadow-xl shadow-purple-500/5 transition-all">
-          {/* Background Ambient Glows */}
-          <div className="absolute top-0 -left-12 w-72 h-72 bg-purple-500/10 dark:bg-purple-500/20 rounded-full filter blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 -right-12 w-72 h-72 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full filter blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 p-5 sm:p-8 lg:p-10 flex flex-col md:flex-row items-center gap-6 sm:gap-8 lg:gap-10">
-            
-            {/* Cover: Left on Desktop, Top & Large on Mobile */}
-            <div 
-              onClick={() => openStoryDetail(featuredStory.id)}
-              className="relative w-48 sm:w-56 md:w-52 lg:w-64 aspect-[2/3] flex-shrink-0 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-purple-500/25 dark:ring-purple-500/30 group cursor-pointer transform hover:-translate-y-1 hover:shadow-purple-500/20 transition-all duration-300 mx-auto md:mx-0 bg-slate-200 dark:bg-slate-800"
-            >
-              <img 
-                src={featuredStory.coverUrl} 
-                alt={featuredStory.title} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-              />
-
-              {/* Top Right +18 Badge */}
-              {featuredStory.isNsfw && (
-                <div className="absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded-md bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-xs shadow-lg border border-white/25 tracking-tighter">
-                  +18
-                </div>
-              )}
-
-              {/* Bottom stats overlay on cover */}
-              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-              <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white text-[11px] font-bold pointer-events-none">
-                <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md">
-                  <BookOpen className="w-3 h-3 text-purple-300" />
-                  {featuredStory.chapters.length} Bölüm
-                </span>
-                <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md">
-                  <Eye className="w-3 h-3 text-blue-300" />
-                  {featuredStory.reads > 1000 ? `${(featuredStory.reads / 1000).toFixed(1)}k` : featuredStory.reads}
-                </span>
-              </div>
-            </div>
-
-            {/* Story Details & Actions */}
-            <div className="flex-1 space-y-4 text-center md:text-left min-w-0">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white text-xs font-black shadow-md shadow-purple-500/25 tracking-wide">
-                  <Flame className="w-3.5 h-3.5 fill-current" /> HAFTANIN POPÜLERİ
-                </span>
-                <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-200 dark:border-purple-800">
-                  {featuredStory.category}
-                </span>
-                {(featuredStory.status === 'completed' || featuredStory.isCompleted) && (
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Tamamlandı
-                  </span>
-                )}
-              </div>
-
-              <h1 
-                onClick={() => openStoryDetail(featuredStory.id)}
-                className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer transition-colors"
-              >
-                {featuredStory.title}
-              </h1>
-
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 sm:line-clamp-4 leading-relaxed font-normal">
-                {featuredStory.summary}
-              </p>
-
-              {/* Author & CTA Bar */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200/60 dark:border-slate-800/80">
-                {/* Author */}
-                <div 
-                  className="flex items-center gap-3 cursor-pointer group/author"
-                  onClick={() => openAuthorProfile(featuredStory.authorId)}
-                >
-                  <img 
-                    src={featuredStory.authorAvatar} 
-                    alt={featuredStory.authorName} 
-                    className="w-11 h-11 rounded-full object-cover ring-2 ring-purple-500 shadow-md group-hover/author:scale-105 transition-transform" 
-                  />
-                  <div className="text-left">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white group-hover/author:text-purple-600 dark:group-hover/author:text-purple-300 transition-colors">
-                      {featuredStory.authorName}
-                    </p>
-                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">@{featuredStory.authorUsername}</p>
-                  </div>
-                </div>
-
-                {/* Buttons */}
-                <div className="flex items-center gap-2.5">
-                  <button
-                    onClick={() => openStoryReader(featuredStory.id)}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-purple-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Okumaya Başla</span>
-                  </button>
-                  <button
-                    onClick={() => openStoryDetail(featuredStory.id)}
-                    className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-purple-400 font-bold text-xs transition-all"
-                  >
-                    Detaylar
-                  </button>
-                  <button
-                    onClick={() => toggleLibraryStory(featuredStory.id)}
-                    className={`p-2.5 rounded-xl border transition-all ${
-                      isStoryInLibrary(featuredStory.id)
-                        ? 'bg-purple-600 border-purple-500 text-white shadow-md'
-                        : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-purple-500 hover:text-purple-600'
-                    }`}
-                    title={isStoryInLibrary(featuredStory.id) ? 'Kütüphaneden Çıkar' : 'Kütüphaneye Ekle'}
-                  >
-                    <BookOpen className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </section>
-      )}
-
-      {/* Öne Çıkan Hikayeler Section (En Çok Beğenilen Hikayeler) */}
-      {!filters.query && filters.category === 'Tümü' && mostLikedStories.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Flame className="w-5 h-5 text-amber-500 fill-amber-500/20" />
-              Öne Çıkan Hikayeler
-            </h2>
-            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-              <Heart className="w-3.5 h-3.5 fill-current text-rose-500" /> En Çok Beğenilen Kurgular
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {mostLikedStories.map((story, idx) => (
-              <div key={`featured_story_${story.id}`} className="relative group">
-                {idx < 3 && (
-                  <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-black shadow-md flex items-center gap-0.5">
-                    <Crown className="w-3 h-3 fill-current" /> #{idx + 1}
-                  </div>
-                )}
-                <StoryCard story={story} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Sana Özel Section (Okuyucunun daha önce okuduğu hikayelerin türüne göre öneriler) */}
-      {!filters.query && filters.category === 'Tümü' && personalizedStories.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              Sana Özel
-            </h2>
-            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1">
-              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> Okuma geçmişine ve ilgi alanlarına göre
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {personalizedStories.map((story) => (
-              <StoryCard key={`personalized_${story.id}`} story={story} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Kısa Hikayeler Öneri Bandı */}
-      {!filters.query && filters.category === 'Tümü' && shortStories.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-xl bg-amber-500 text-white shadow-sm">
-                <Zap className="w-4 h-4 fill-current" />
-              </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                Kısa Hikayeler
-              </h2>
-            </div>
-            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-              ⚡ Tek Oturuşta Bitirebileceğiniz Kurgular
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {shortStories.map((story) => (
-              <div key={`short_${story.id}`} className="relative group">
-                <div className="absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-extrabold shadow-md flex items-center gap-0.5">
-                  <Zap className="w-2.5 h-2.5 fill-current" /> Kısa
-                </div>
-                <StoryCard story={story} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Recommended Stories Section (Önerilen Hikayeler) */}
-      {!filters.query && filters.category === 'Tümü' && recommendedStories.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              Sizin İçin Önerilen Hikayeler
-            </h2>
-            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-              Popüler Kurgular
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {recommendedStories.map((story) => (
-              <StoryCard key={`rec_${story.id}`} story={story} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Completed Stories Section (Tamamlanan Hikayeler) */}
-      {!filters.query && filters.category === 'Tümü' && completedStories.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-              Tamamlanan Hikayeler
-            </h2>
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              Final Yapan Kurgular
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {completedStories.map((story) => (
-              <StoryCard key={`comp_${story.id}`} story={story} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Featured Authors Spotlight ("Öne Çıkan Yazarlar" - Hikayeleri En Çok Beğeni Alanlar) */}
-      {!filters.query && filters.category === 'Tümü' && sortedFeaturedAuthors.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Crown className="w-5 h-5 text-amber-500 fill-amber-500/20" />
-              Öne Çıkan Yazarlar
-            </h2>
-            <span className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 rounded-full border border-rose-200/60 dark:border-rose-900/60">
-              <Heart className="w-3.5 h-3.5 fill-current text-rose-500" /> Hikayeleri En Çok Beğenilen Yazarlar
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {sortedFeaturedAuthors.map((author, index) => {
-              const isFollowing = currentUser?.following?.includes(author.id);
-              const isSelf = currentUser?.id === author.id;
-
-              return (
-                <div 
-                  key={author.id}
-                  className={`relative p-4 rounded-2xl bg-white dark:bg-slate-900 border transition-all flex items-center gap-3.5 group ${
-                    index === 0
-                      ? 'border-amber-400/80 dark:border-amber-500/50 shadow-md ring-2 ring-amber-400/20'
-                      : 'border-slate-100 dark:border-slate-800/80 hover:border-purple-200 dark:hover:border-purple-900/50 shadow-sm'
-                  }`}
-                >
-                  {index < 3 && (
-                    <div 
-                      className={`absolute -top-2.5 left-4 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm ${
-                        index === 0
-                          ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white'
-                          : index === 1
-                            ? 'bg-slate-500 text-white'
-                            : 'bg-amber-700 text-white'
-                      }`}
-                    >
-                      <Crown className="w-3 h-3 fill-current" />
-                      {index === 0 ? '#1 En Çok Beğenilen' : `${index + 1}. Sıra`}
-                    </div>
-                  )}
-
-                  <div className="relative flex-shrink-0">
-                    <img 
-                      src={author.avatar} 
-                      alt={author.name} 
-                      className="w-13 h-13 rounded-xl object-cover ring-2 ring-purple-500/20 cursor-pointer hover:scale-105 transition-transform"
-                      onClick={() => openAuthorProfile(author.id)}
-                    />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <h4 
-                      onClick={() => openAuthorProfile(author.id)}
-                      className="text-xs font-bold text-slate-900 dark:text-slate-100 hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer truncate flex items-center gap-1"
-                    >
-                      {author.name}
-                    </h4>
-                    <p className="text-[11px] text-slate-400 truncate mb-1">@{author.username}</p>
-                    <div className="flex items-center flex-wrap gap-1.5 text-[10px] font-bold">
-                      <span className="text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-lg border border-rose-200/50 dark:border-rose-900/50 flex items-center gap-1">
-                        <Heart className="w-2.5 h-2.5 fill-current" />
-                        {author.totalLikes} Beğeni
-                      </span>
-                      <span className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-200/50 dark:border-purple-900/50">
-                        {author.authorStoriesCount} Hikaye
-                      </span>
-                    </div>
-                  </div>
-
-                  {!isSelf && (
-                    <button
-                      onClick={() => toggleFollowUser(author.id)}
-                      className={`p-2.5 rounded-xl transition-all cursor-pointer ${
-                        isFollowing
-                          ? 'bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300 hover:bg-purple-200'
-                          : 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm shadow-purple-500/20'
-                      }`}
-                      title={isFollowing ? 'Takipten Çık' : 'Takip Et'}
-                    >
-                      {isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       {/* Stories Results Section */}
       <section className="space-y-6">
         
         {/* Active Filter Badges Bar */}
-        {(filters.query || filters.category !== 'Tümü' || filters.tag || filters.status !== 'all') && (
+        {(filters.query || filters.category !== 'Tümü' || filters.tag || filters.status !== 'all' || filters.sortBy !== 'popular') && (
           <div className="flex flex-wrap items-center gap-2 p-3.5 bg-purple-50 dark:bg-purple-950/40 rounded-2xl border border-purple-200/80 dark:border-purple-900/40">
             <span className="text-xs font-bold text-purple-700 dark:text-purple-300 mr-1">Aktif Süzgeçler:</span>
 
@@ -957,7 +433,7 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
                     setSelectedTagFilter(undefined);
                     setFilters((prev) => ({ ...prev, tag: undefined }));
                   }}
-                  className="p-0.5 rounded-full hover:bg-purple-700 transition-colors"
+                  className="p-0.5 rounded-full hover:bg-purple-700 transition-colors cursor-pointer"
                   title="Etiket filtresini kaldır"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -973,7 +449,7 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
                     setSelectedCategoryFilter('Tümü');
                     setFilters((prev) => ({ ...prev, category: 'Tümü' }));
                   }}
-                  className="p-0.5 rounded-full hover:bg-indigo-700 transition-colors"
+                  className="p-0.5 rounded-full hover:bg-indigo-700 transition-colors cursor-pointer"
                   title="Kategori filtresini kaldır"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -986,8 +462,21 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
                 "{filters.query}"
                 <button 
                   onClick={() => setFilters((prev) => ({ ...prev, query: '' }))}
-                  className="p-0.5 rounded-full hover:bg-slate-700 transition-colors"
+                  className="p-0.5 rounded-full hover:bg-slate-700 transition-colors cursor-pointer"
                   title="Arama kelimesini temizle"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            )}
+
+            {filters.status !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm">
+                {filters.status === 'completed' ? 'Tamamlananlar' : 'Devam Edenler'}
+                <button 
+                  onClick={() => setFilters((prev) => ({ ...prev, status: 'all' }))}
+                  className="p-0.5 rounded-full hover:bg-emerald-700 transition-colors cursor-pointer"
+                  title="Durum filtresini kaldır"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -996,7 +485,7 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
 
             <button 
               onClick={clearFilters}
-              className="ml-auto text-xs text-rose-500 font-bold hover:underline"
+              className="ml-auto text-xs text-rose-500 font-bold hover:underline cursor-pointer"
             >
               Filtreleri Temizle
             </button>
@@ -1010,17 +499,19 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
                 ? `#${filters.tag} Etiketli Hikayeler` 
                 : filters.category !== 'Tümü' 
                   ? `${filters.category} Hikayeleri` 
-                  : 'Tüm Hikayeler'}
+                  : filters.query 
+                    ? `"${filters.query}" Arama Sonuçları`
+                    : 'Tüm Hikayeler'}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {filteredStories.length} hikaye listeleniyor
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {filteredStories.length} kurgu listeleniyor
             </p>
           </div>
 
-          {(filters.query || filters.category !== 'Tümü' || filters.tag) && (
+          {(filters.query || filters.category !== 'Tümü' || filters.tag || filters.status !== 'all') && (
             <button 
               onClick={clearFilters}
-              className="text-xs text-purple-600 dark:text-purple-400 font-bold hover:underline"
+              className="text-xs text-purple-600 dark:text-purple-400 font-bold hover:underline cursor-pointer"
             >
               Filtreleri Temizle
             </button>
@@ -1044,7 +535,7 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
             </div>
             <div>
               <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                Sitede Henüz Hikaye Bulunmuyor
+                Platformda Henüz Hikaye Yok
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1 leading-relaxed">
                 Kendi kurgunu yazıp ilk hikayeyi yayınlayarak WattyBoon topluluğunun yazarları arasına katılabilirsin!
@@ -1058,20 +549,28 @@ export const ExploreView: React.FC<ExploreViewProps> = () => {
             </button>
           </div>
         ) : (
-          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800/80 p-8">
-            <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">
-              Hikaye Bulunamadı
+          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800/80 p-8 space-y-4">
+            <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto" />
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+              Aramanıza Uygun Hikaye Bulunamadı
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-4">
-              Arama kriterlerinize uygun hikaye bulunamadı. Lütfen kelimeleri değiştirmeyi veya filtreleri temizlemeyi deneyin.
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              "{filters.query || filters.tag || filters.category}" kriterlerine uygun sonuç bulunamadı. Lütfen arama kelimelerini değiştirmeyi veya filtreleri sıfırlamayı deneyin.
             </p>
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs shadow-md shadow-purple-500/20"
-            >
-              Tüm Hikayeleri Göster
-            </button>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs shadow-md shadow-purple-500/20 cursor-pointer"
+              >
+                Tüm Hikayeleri Göster
+              </button>
+              <button
+                onClick={() => setActiveView('home')}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+              >
+                Ana Sayfaya Dön
+              </button>
+            </div>
           </div>
         )}
       </section>
