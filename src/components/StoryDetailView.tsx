@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   ArrowLeft, 
@@ -24,10 +24,16 @@ import {
   Headphones,
   Zap,
   Music,
-  ExternalLink
+  ExternalLink,
+  Trophy,
+  Medal,
+  Award,
+  TrendingUp,
+  Hash
 } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
 import { StoryCommentsSection } from './StoryCommentsSection';
+import { Story } from '../types';
 
 export const StoryDetailView: React.FC = () => {
   const { 
@@ -49,6 +55,8 @@ export const StoryDetailView: React.FC = () => {
     deleteComment,
     currentUser,
     toggleFollowUser,
+    selectedCategoryFilter,
+    setSelectedCategoryFilter,
     setSelectedTagFilter,
     isNsfwEnabled,
     toggleNsfw
@@ -58,6 +66,66 @@ export const StoryDetailView: React.FC = () => {
   const [isCustomListModalOpen, setIsCustomListModalOpen] = useState(false);
 
   const story = stories.find((s) => s.id === activeStoryId);
+
+  // Helper for Turkish locative suffixes (e.g. Romantik'te, Korku'da, Aşk'ta, Şiir'de)
+  const getTurkishLocative = (word: string): string => {
+    const clean = word.trim().replace(/^#/, '');
+    if (!clean) return '';
+    const lastVowelMatch = clean.match(/[aıoueiöüAIOUEIÖÜ][^aıoueiöüAIOUEIÖÜ]*$/);
+    const lastVowel = lastVowelMatch ? lastVowelMatch[0][0].toLowerCase() : 'e';
+    const isBack = ['a', 'ı', 'o', 'u'].includes(lastVowel);
+    
+    const lastChar = clean.slice(-1).toLowerCase();
+    const isVoiceless = ['f', 's', 't', 'k', 'ç', 'ş', 'h', 'p'].includes(lastChar);
+    
+    const dOrT = isVoiceless ? 't' : 'd';
+    const aOrE = isBack ? 'a' : 'e';
+    
+    return `'${dOrT}${aOrE}`;
+  };
+
+  // Score calculation for category and tag leaderboard rankings
+  const getStoryScore = (s: Story) => {
+    return (s.reads || 0) + (s.likes || 0) * 5 + (s.comments?.length || 0) * 2;
+  };
+
+  // Category Rank Calculation
+  const categoryRankInfo = useMemo(() => {
+    if (!story) return { rank: 1, total: 1 };
+    const categoryStories = stories
+      .filter((s) => s.category === story.category && s.visibility === 'public')
+      .sort((a, b) => getStoryScore(b) - getStoryScore(a));
+
+    const rankIndex = categoryStories.findIndex((s) => s.id === story.id);
+    const rank = rankIndex !== -1 ? rankIndex + 1 : 1;
+    const total = Math.max(categoryStories.length, 1);
+
+    return { rank, total };
+  }, [stories, story]);
+
+  // Tag Ranks Calculation
+  const tagRankInfos = useMemo(() => {
+    if (!story || !story.tags || story.tags.length === 0) return [];
+
+    return story.tags
+      .map((tag) => {
+        const cleanTag = tag.trim().replace(/^#/, '');
+        const tagStories = stories
+          .filter((s) => s.tags?.some((t) => t.toLowerCase() === cleanTag.toLowerCase()) && s.visibility === 'public')
+          .sort((a, b) => getStoryScore(b) - getStoryScore(a));
+
+        const rankIndex = tagStories.findIndex((s) => s.id === story.id);
+        const rank = rankIndex !== -1 ? rankIndex + 1 : 1;
+        const total = Math.max(tagStories.length, 1);
+
+        return {
+          tag: cleanTag,
+          rank,
+          total,
+        };
+      })
+      .sort((a, b) => a.rank - b.rank);
+  }, [stories, story]);
 
   if (!story) {
     return (
@@ -128,6 +196,12 @@ export const StoryDetailView: React.FC = () => {
               }`} 
             />
 
+            {story.isNsfw && (
+              <div className="absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded-md bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-xs shadow-md border border-white/20 tracking-tighter">
+                +18
+              </div>
+            )}
+
             {story.isNsfw && !isNsfwEnabled && (
               <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm p-3 flex flex-col items-center justify-center text-center gap-2 z-10">
                 <Flame className="w-6 h-6 text-rose-500 animate-pulse" />
@@ -150,6 +224,19 @@ export const StoryDetailView: React.FC = () => {
               <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
                 {story.category}
               </span>
+
+              {/* Category Ranking Badge */}
+              <button
+                onClick={() => {
+                  setSelectedCategoryFilter(story.category);
+                  setActiveView('explore');
+                }}
+                className="px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-purple-500/15 hover:from-amber-500/25 hover:to-purple-500/25 text-amber-800 dark:text-amber-300 font-extrabold border border-amber-500/30 flex items-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95"
+                title={`${story.category} kategorisindeki sıralaması: #${categoryRankInfo.rank}`}
+              >
+                <Trophy className="w-3.5 h-3.5 text-amber-500 fill-amber-500/30" />
+                <span>{story.category}{getTurkishLocative(story.category)} {categoryRankInfo.rank}. sırada</span>
+              </button>
 
               {story.isShortStory && (
                 <span className="px-2.5 py-1 rounded-full bg-amber-500 text-white font-extrabold shadow-sm flex items-center gap-1">
@@ -253,6 +340,85 @@ export const StoryDetailView: React.FC = () => {
                   <MessageSquare className="w-3.5 h-3.5 text-amber-500" /> {story.comments.length}
                 </span>
                 <span className="text-[10px] text-slate-400">Yorum</span>
+              </div>
+            </div>
+
+            {/* Category & Tag Leaderboard Rankings Showcase */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-purple-500/5 to-indigo-500/10 dark:from-slate-800/90 dark:via-slate-800/60 dark:to-purple-950/40 border border-amber-500/30 dark:border-amber-500/20 shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-xl bg-amber-500 text-white shadow-xs">
+                    <Trophy className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                      Tür ve Etiket Sıralamaları
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Okunma ve beğeni etkileşimine dayalı anlık liste
+                    </p>
+                  </div>
+                </div>
+                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/70 px-2.5 py-0.5 rounded-full border border-amber-300/80 dark:border-amber-900/60">
+                  <TrendingUp className="w-3 h-3" /> Anlık Dereceler
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {/* Category Rank Badge */}
+                <button
+                  onClick={() => {
+                    setSelectedCategoryFilter(story.category);
+                    setActiveView('explore');
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-400/90 dark:border-amber-500/50 shadow-xs hover:border-amber-500 hover:scale-[1.02] active:scale-95 transition-all text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer group"
+                  title={`${story.category} kategorisindeki tüm eserleri gör`}
+                >
+                  <div className="w-5.5 h-5.5 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-400 text-white font-black text-[11px] flex items-center justify-center shadow-xs">
+                    #{categoryRankInfo.rank}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-purple-700 dark:text-purple-300 font-black text-xs group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                      {story.category}{getTurkishLocative(story.category)} {categoryRankInfo.rank}. sırada
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-normal">
+                      {categoryRankInfo.total} hikaye arasında
+                    </p>
+                  </div>
+                </button>
+
+                {/* Tag Rank Badges */}
+                {tagRankInfos.map((tr) => (
+                  <button
+                    key={tr.tag}
+                    onClick={() => {
+                      setSelectedTagFilter(tr.tag);
+                      setActiveView('explore');
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800/80 shadow-xs hover:border-purple-500 hover:scale-[1.02] active:scale-95 transition-all text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer group"
+                    title={`#${tr.tag} etiketindeki sıralama (${tr.total} hikaye arasında)`}
+                  >
+                    <div className={`w-5.5 h-5.5 rounded-lg font-black text-[11px] flex items-center justify-center shadow-xs ${
+                      tr.rank === 1
+                        ? 'bg-gradient-to-tr from-amber-500 to-yellow-400 text-white'
+                        : tr.rank === 2
+                          ? 'bg-gradient-to-tr from-slate-500 to-slate-400 text-white'
+                          : tr.rank === 3
+                            ? 'bg-gradient-to-tr from-amber-700 to-amber-600 text-white'
+                            : 'bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300'
+                    }`}>
+                      #{tr.rank}
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                        #{tr.tag}{getTurkishLocative(tr.tag)} {tr.rank}. sırada
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-normal">
+                        {tr.total} hikaye arasında
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -370,21 +536,29 @@ export const StoryDetailView: React.FC = () => {
           </div>
         )}
 
-        {story.tags.length > 0 && (
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-2">
-            {story.tags.map((tag) => (
-              <button 
-                key={tag}
-                onClick={() => {
-                  setSelectedTagFilter(tag);
-                  setActiveView('explore');
-                }}
-                className="px-3 py-1 rounded-xl text-xs font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 border border-purple-200/50 dark:border-purple-900/50 hover:bg-purple-600 hover:text-white transition-all cursor-pointer"
-                title={`#${tag} etiketli hikayeleri gör`}
-              >
-                #{tag}
-              </button>
-            ))}
+        {tagRankInfos.length > 0 && (
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Etiketler & Etiket Sıralamaları
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {tagRankInfos.map((tr) => (
+                <button 
+                  key={tr.tag}
+                  onClick={() => {
+                    setSelectedTagFilter(tr.tag);
+                    setActiveView('explore');
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-900/60 hover:bg-purple-600 hover:text-white transition-all cursor-pointer flex items-center gap-2 group"
+                  title={`#${tr.tag} etiketli hikayeleri gör (${tr.tag}${getTurkishLocative(tr.tag)} ${tr.rank}. sırada)`}
+                >
+                  <span className="font-bold">#{tr.tag}</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-purple-200/80 dark:bg-purple-800/80 text-purple-900 dark:text-purple-100 text-[10px] font-black group-hover:bg-white group-hover:text-purple-700 transition-colors">
+                    #{tr.rank}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </section>

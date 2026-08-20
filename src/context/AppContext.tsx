@@ -143,7 +143,7 @@ const deleteCommentFromList = (comments: Comment[], commentId: string): Comment[
     }));
 };
 
-export type ViewType = 'explore' | 'library' | 'editor' | 'profile' | 'reader' | 'notifications' | 'story-detail' | 'forum';
+export type ViewType = 'explore' | 'categories' | 'library' | 'editor' | 'profile' | 'reader' | 'notifications' | 'story-detail' | 'forum';
 
 interface AppContextType {
   // Theme
@@ -836,16 +836,163 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  // Helper to parse route from initial URL query params
+  const getInitialRouteFromUrl = (): {
+    view: ViewType;
+    storyId: string | null;
+    chapterIndex: number;
+    authorId: string | null;
+    editStoryId: string | null;
+    category: Category | 'Tümü';
+    tag?: string;
+  } => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const sayfa = params.get('sayfa')?.toLowerCase();
+      const id = params.get('id');
+      const bolumStr = params.get('bolum');
+      const bolum = bolumStr ? Math.max(0, parseInt(bolumStr, 10) - 1) : 0;
+      const kategori = params.get('kategori');
+      const etiket = params.get('etiket') || undefined;
+
+      let view: ViewType = 'explore';
+      if (sayfa === 'kategoriler' || sayfa === 'kategori') view = 'categories';
+      else if (sayfa === 'kutuphanem' || sayfa === 'kutuphane' || sayfa === 'library') view = 'library';
+      else if (sayfa === 'forum' || sayfa === 'tartisma') view = 'forum';
+      else if (sayfa === 'yaz' || sayfa === 'editor') view = 'editor';
+      else if (sayfa === 'hikaye' || sayfa === 'hikaye-detay' || sayfa === 'story') view = 'story-detail';
+      else if (sayfa === 'oku' || sayfa === 'reader') view = 'reader';
+      else if (sayfa === 'profil' || sayfa === 'profile') view = 'profile';
+      else if (sayfa === 'bildirimler' || sayfa === 'notifications') view = 'notifications';
+      else if (kategori) view = 'explore';
+
+      return {
+        view,
+        storyId: id || 'story_1',
+        chapterIndex: bolum,
+        authorId: id || null,
+        editStoryId: view === 'editor' ? id : null,
+        category: (kategori as Category) || 'Tümü',
+        tag: etiket,
+      };
+    } catch {
+      return {
+        view: 'explore',
+        storyId: 'story_1',
+        chapterIndex: 0,
+        authorId: null,
+        editStoryId: null,
+        category: 'Tümü',
+        tag: undefined,
+      };
+    }
+  };
+
+  const initialRoute = getInitialRouteFromUrl();
+
   // View & Navigation State
-  const [activeView, setActiveViewRaw] = useState<ViewType>('explore');
-  const [activeStoryId, setActiveStoryId] = useState<string | null>('story_1');
-  const [activeChapterIndex, setActiveChapterIndex] = useState<number>(0);
-  const [activeAuthorId, setActiveAuthorId] = useState<string | null>(null);
-  const [editingStoryId, setEditingStoryId] = useState<string | null>(null);
+  const [activeView, setActiveViewRaw] = useState<ViewType>(initialRoute.view);
+  const [activeStoryId, setActiveStoryId] = useState<string | null>(initialRoute.storyId);
+  const [activeChapterIndex, setActiveChapterIndex] = useState<number>(initialRoute.chapterIndex);
+  const [activeAuthorId, setActiveAuthorId] = useState<string | null>(initialRoute.authorId);
+  const [editingStoryId, setEditingStoryId] = useState<string | null>(initialRoute.editStoryId);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [autoOpenProfileSettings, setAutoOpenProfileSettings] = useState<boolean>(false);
 
-  // Helper to push history state for browser back/forward buttons
+  // Helper to generate dynamic URL search params and page document title
+  const getUrlAndTitle = (
+    view: ViewType,
+    storyId: string | null = activeStoryId,
+    chapterIndex: number = activeChapterIndex,
+    authorId: string | null = activeAuthorId,
+    editStoryId: string | null = editingStoryId,
+    catFilter: Category | 'Tümü' = selectedCategoryFilter,
+    tagFilter: string | undefined = selectedTagFilter
+  ): { url: string; title: string } => {
+    let url = '/';
+    let title = 'WattyBoon';
+
+    switch (view) {
+      case 'explore': {
+        const params = new URLSearchParams();
+        params.set('sayfa', 'kesfet');
+        if (catFilter && catFilter !== 'Tümü') params.set('kategori', catFilter);
+        if (tagFilter) params.set('etiket', tagFilter);
+        url = `?${params.toString()}`;
+        if (catFilter && catFilter !== 'Tümü') {
+          title = `WattyBoon | ${catFilter} Hikayeleri`;
+        } else if (tagFilter) {
+          title = `WattyBoon | #${tagFilter} Eserleri`;
+        } else {
+          title = 'WattyBoon | Keşfet';
+        }
+        break;
+      }
+      case 'categories': {
+        const params = new URLSearchParams();
+        params.set('sayfa', 'kategoriler');
+        if (catFilter && catFilter !== 'Tümü') params.set('kategori', catFilter);
+        url = `?${params.toString()}`;
+        title = catFilter && catFilter !== 'Tümü' ? `WattyBoon | ${catFilter} Kategorisi` : 'WattyBoon | Tüm Kategoriler';
+        break;
+      }
+      case 'library': {
+        url = '?sayfa=kutuphanem';
+        title = 'WattyBoon | Kütüphanem';
+        break;
+      }
+      case 'forum': {
+        url = '?sayfa=forum';
+        title = 'WattyBoon | Topluluk ve Forum';
+        break;
+      }
+      case 'editor': {
+        if (editStoryId) {
+          url = `?sayfa=yaz&id=${editStoryId}`;
+          const targetStory = stories.find((s) => s.id === editStoryId);
+          title = targetStory ? `WattyBoon | Düzenle: ${targetStory.title}` : 'WattyBoon | Hikaye Düzenle';
+        } else {
+          url = '?sayfa=yaz';
+          title = 'WattyBoon | Yeni Hikaye Yaz';
+        }
+        break;
+      }
+      case 'story-detail': {
+        url = storyId ? `?sayfa=hikaye&id=${storyId}` : '?sayfa=hikaye';
+        const targetStory = stories.find((s) => s.id === storyId);
+        title = targetStory ? `WattyBoon | ${targetStory.title}` : 'WattyBoon | Hikaye Detayı';
+        break;
+      }
+      case 'reader': {
+        url = storyId ? `?sayfa=oku&id=${storyId}&bolum=${chapterIndex + 1}` : '?sayfa=oku';
+        const targetStory = stories.find((s) => s.id === storyId);
+        const chapter = targetStory?.chapters?.[chapterIndex];
+        const chapTitle = chapter ? (chapter.title || `Bölüm ${chapterIndex + 1}`) : `Bölüm ${chapterIndex + 1}`;
+        title = targetStory ? `WattyBoon | ${targetStory.title} - ${chapTitle}` : 'WattyBoon | Hikaye Oku';
+        break;
+      }
+      case 'profile': {
+        const targetId = authorId || currentUser?.id;
+        url = targetId ? `?sayfa=profil&id=${targetId}` : '?sayfa=profil';
+        const targetUser = users.find((u) => u.id === targetId);
+        title = targetUser ? `WattyBoon | ${targetUser.name} (@${targetUser.username})` : 'WattyBoon | Yazar Profili';
+        break;
+      }
+      case 'notifications': {
+        url = '?sayfa=bildirimler';
+        title = 'WattyBoon | Bildirimler';
+        break;
+      }
+      default: {
+        url = '/';
+        title = 'WattyBoon | Hikaye Dünyası';
+      }
+    }
+
+    return { url, title };
+  };
+
+  // Helper to push history state for browser back/forward buttons and address bar
   const pushStateToHistory = (
     view: ViewType,
     storyId: string | null = activeStoryId,
@@ -854,6 +1001,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     editStoryId: string | null = editingStoryId
   ) => {
     try {
+      const { url, title } = getUrlAndTitle(view, storyId, chapterIndex, authorId, editStoryId);
+      document.title = title;
       window.history.pushState(
         {
           activeView: view,
@@ -862,7 +1011,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           activeAuthorId: authorId,
           editingStoryId: editStoryId,
         },
-        ''
+        title,
+        url
       );
     } catch (e) {
       console.warn('History pushState error:', e);
@@ -875,9 +1025,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Browser back/forward navigation listener (popstate)
+  // Sync document title and URL with active state continuously
   useEffect(() => {
     try {
+      const { url, title } = getUrlAndTitle(
+        activeView,
+        activeStoryId,
+        activeChapterIndex,
+        activeAuthorId,
+        editingStoryId,
+        selectedCategoryFilter,
+        selectedTagFilter
+      );
+      document.title = title;
       window.history.replaceState(
         {
           activeView,
@@ -885,13 +1045,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           activeChapterIndex,
           activeAuthorId,
           editingStoryId,
+          selectedCategoryFilter,
+          selectedTagFilter,
         },
-        ''
+        title,
+        url
       );
     } catch (e) {
       console.warn('History replaceState error:', e);
     }
+  }, [
+    activeView,
+    activeStoryId,
+    activeChapterIndex,
+    activeAuthorId,
+    editingStoryId,
+    selectedCategoryFilter,
+    selectedTagFilter,
+    stories,
+    users,
+    currentUser,
+  ]);
 
+  // Browser back/forward navigation listener (popstate)
+  useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       if (e.state && e.state.activeView) {
         setActiveViewRaw(e.state.activeView);
@@ -899,8 +1076,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (e.state.activeChapterIndex !== undefined) setActiveChapterIndex(e.state.activeChapterIndex);
         if (e.state.activeAuthorId !== undefined) setActiveAuthorId(e.state.activeAuthorId);
         if (e.state.editingStoryId !== undefined) setEditingStoryId(e.state.editingStoryId);
+        if (e.state.selectedCategoryFilter !== undefined) setSelectedCategoryFilter(e.state.selectedCategoryFilter);
+        if (e.state.selectedTagFilter !== undefined) setSelectedTagFilter(e.state.selectedTagFilter);
       } else {
-        setActiveViewRaw('explore');
+        const parsed = getInitialRouteFromUrl();
+        setActiveViewRaw(parsed.view);
+        if (parsed.storyId) setActiveStoryId(parsed.storyId);
+        if (parsed.authorId) setActiveAuthorId(parsed.authorId);
       }
     };
 

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Story } from '../types';
 import { useApp } from '../context/AppContext';
-import { BookOpen, Heart, Eye, Bookmark, Lock, Globe, ArrowRight, ListPlus, Flame, EyeOff } from 'lucide-react';
+import { BookOpen, Heart, Eye, Bookmark, Lock, Globe, ArrowRight, ListPlus, Flame, EyeOff, Trophy } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
 
 interface StoryCardProps {
@@ -11,6 +11,7 @@ interface StoryCardProps {
 
 export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) => {
   const { 
+    stories,
     openStoryDetail, 
     openStoryReader, 
     openAuthorProfile, 
@@ -26,6 +27,15 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
   const isSaved = isStoryInLibrary(story.id);
   const isLiked = currentUser ? story.likedBy.includes(currentUser.id) : false;
   const isBlurred = story.isNsfw && !isNsfwEnabled;
+
+  const categoryRank = useMemo(() => {
+    if (!stories || stories.length === 0) return null;
+    const catStories = stories
+      .filter((s) => s.category === story.category && s.visibility === 'public')
+      .sort((a, b) => ((b.reads || 0) + (b.likes || 0) * 5) - ((a.reads || 0) + (a.likes || 0) * 5));
+    const idx = catStories.findIndex((s) => s.id === story.id);
+    return idx !== -1 ? idx + 1 : null;
+  }, [stories, story.id, story.category]);
 
   if (layout === 'compact') {
     return (
@@ -43,6 +53,11 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
               isBlurred ? 'blur-md filter scale-110 brightness-75' : ''
             }`} 
           />
+          {story.isNsfw && (
+            <span className="absolute top-0.5 right-0.5 z-20 px-1 py-0.2 bg-rose-600 text-white rounded text-[8px] font-black border border-white/20 shadow-sm leading-none">
+              +18
+            </span>
+          )}
           {isBlurred && (
             <div className="absolute inset-0 bg-slate-950/60 flex items-center justify-center">
               <EyeOff className="w-4 h-4 text-rose-400 animate-pulse" />
@@ -120,15 +135,17 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
             </div>
           )}
 
+          {/* Top Right +18 Badge */}
+          {story.isNsfw && (
+            <div className="absolute top-2 right-2 z-30 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-[10px] shadow-md border border-white/25 flex items-center justify-center tracking-tighter pointer-events-none">
+              +18
+            </div>
+          )}
+
           <div className="absolute top-2 left-2 flex flex-col gap-1 z-20">
             <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-purple-900/80 backdrop-blur-md text-purple-100 border border-purple-400/30">
               {story.category}
             </span>
-            {story.isNsfw && (
-              <span className="px-1.5 py-0.5 text-[9px] font-black rounded bg-rose-600 text-white shadow-md">
-                +18
-              </span>
-            )}
             {(story.status === 'completed' || story.isCompleted) && (
               <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded-md bg-emerald-600 text-white shadow-md flex items-center gap-0.5">
                 ✓ Tamamlandı
@@ -265,9 +282,15 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
             <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-900/80 backdrop-blur-md text-purple-200 border border-purple-500/20 shadow-sm">
               {story.category}
             </span>
-            {story.isNsfw && (
-              <span className="px-1.5 py-0.5 text-[9px] font-black rounded bg-rose-600 text-white shadow-md">
-                +18
+            {categoryRank && categoryRank <= 3 && (
+              <span className={`px-1.5 py-0.5 text-[9px] font-black rounded backdrop-blur-md text-white shadow-sm flex items-center gap-0.5 ${
+                categoryRank === 1 
+                  ? 'bg-amber-500' 
+                  : categoryRank === 2 
+                    ? 'bg-slate-500' 
+                    : 'bg-amber-700'
+              }`} title={`${story.category} kategorisinde ${categoryRank}. sırada`}>
+                <Trophy className="w-2.5 h-2.5" /> #{categoryRank}
               </span>
             )}
             {(story.status === 'completed' || story.isCompleted) && (
@@ -276,7 +299,13 @@ export const StoryCard: React.FC<StoryCardProps> = ({ story, layout = 'grid' }) 
               </span>
             )}
           </div>
-          <div className="flex gap-1">
+          
+          <div className="flex items-center gap-1">
+            {story.isNsfw && (
+              <span className="px-1.5 py-0.5 text-[9px] font-black rounded-md bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md border border-white/20 tracking-tighter" title="18+ Yaş Sınırı">
+                +18
+              </span>
+            )}
             {story.visibility === 'private' ? (
               <span className="p-1 rounded bg-amber-950/80 backdrop-blur-md text-amber-300 border border-amber-500/30" title="Özel Hikaye">
                 <Lock className="w-2.5 h-2.5" />

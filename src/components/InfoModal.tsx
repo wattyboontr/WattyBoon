@@ -245,51 +245,29 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                 <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
                   {/* Instagram */}
                   <a
-                    href="https://instagram.com"
+                    href="https://instagram.com/wattyboon"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-11 h-11 flex items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 hover:scale-110 transition-transform text-white shadow-md p-0"
-                    title="Instagram"
+                    title="Instagram @wattyboon"
                   >
                     <Heart className="w-5 h-5 fill-current" />
                   </a>
 
-                  {/* Twitter / X */}
+                  {/* X (Twitter) */}
                   <a
-                    href="https://twitter.com"
+                    href="https://x.com/wattyboon"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-11 h-11 flex items-center justify-center rounded-2xl bg-slate-900 hover:bg-black text-white hover:scale-110 transition-transform shadow-md border border-slate-700/80 font-black text-sm p-0 leading-none"
-                    title="Twitter / X"
+                    title="X (Twitter) @wattyboon"
                   >
                     𝕏
                   </a>
 
-                  {/* YouTube */}
-                  <a
-                    href="https://youtube.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-11 h-11 flex items-center justify-center rounded-2xl bg-red-600 hover:bg-red-700 text-white hover:scale-110 transition-transform shadow-md p-0"
-                    title="YouTube"
-                  >
-                    <Play className="w-5 h-5 fill-current" />
-                  </a>
-
-                  {/* Telegram */}
-                  <a
-                    href="https://telegram.org"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-11 h-11 flex items-center justify-center rounded-2xl bg-sky-500 hover:bg-sky-600 text-white hover:scale-110 transition-transform shadow-md p-0"
-                    title="Telegram Kanalı"
-                  >
-                    <Send className="w-5 h-5" />
-                  </a>
-
                   {/* Discord */}
                   <a
-                    href="https://discord.gg"
+                    href="https://discord.gg/wattyboon"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-11 h-11 flex items-center justify-center rounded-2xl bg-[#5865F2] hover:bg-[#4752C4] text-white hover:scale-110 transition-transform shadow-md p-0"
@@ -298,14 +276,14 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                     <MessageCircle className="w-5 h-5 fill-current" />
                   </a>
 
-                  {/* İletişime Geç */}
-                  <button
-                    onClick={() => setActiveTab('contact')}
+                  {/* Mail / İletişim */}
+                  <a
+                    href="mailto:iletisim@wattyboon.com"
                     className="w-11 h-11 flex items-center justify-center rounded-2xl bg-purple-600 hover:bg-purple-700 text-white hover:scale-110 transition-transform shadow-md p-0"
-                    title="İletişime Geç"
+                    title="E-Posta: iletisim@wattyboon.com"
                   >
                     <Mail className="w-5 h-5" />
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { StoryCard } from './StoryCard';
+import { ALL_CATEGORIES_DATA } from './CategoriesView';
 import { Category, SearchFilters } from '../types';
 import { 
   Search, 
@@ -24,6 +25,7 @@ import {
   Wand2,
   Rocket,
   Heart,
+  Eye,
   Map as MapIcon,
   Zap,
   Crown,
@@ -100,7 +102,7 @@ interface ExploreViewProps {
   onOpenCategoriesModal?: () => void;
 }
 
-export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal }) => {
+export const ExploreView: React.FC<ExploreViewProps> = () => {
   const { 
     stories, 
     users, 
@@ -116,7 +118,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
     openAuthorProfile, 
     toggleLibraryStory, 
     isStoryInLibrary,
-    openStoryEditor 
+    openStoryEditor,
+    setActiveView
   } = useApp();
 
   const [filters, setFilters] = useState<SearchFilters>({
@@ -195,17 +198,26 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
       .slice(0, 8);
   }, [availableStories]);
 
-  // Featured Authors sorted by most followers (Öne Çıkan Yazarlar)
+  // Featured Authors: Only users who have written stories, sorted by total story likes (Hikayesi en çok beğeni alan yazarlar)
   const sortedFeaturedAuthors = useMemo(() => {
-    return [...users]
+    return users
       .filter((u) => u && u.id && u.name)
+      .map((author) => {
+        const authorStories = stories.filter((s) => s.authorId === author.id && s.visibility === 'public');
+        const totalLikes = authorStories.reduce((acc, s) => acc + (s.likes || 0), 0);
+        const totalReads = authorStories.reduce((acc, s) => acc + (s.reads || 0), 0);
+        return {
+          ...author,
+          authorStoriesCount: authorStories.length,
+          totalLikes,
+          totalReads,
+        };
+      })
+      .filter((author) => author.authorStoriesCount > 0) // Sadece hikaye yazan kişiler görünsün
       .sort((a, b) => {
-        const followersA = a.followers?.length || 0;
-        const followersB = b.followers?.length || 0;
-        if (followersB !== followersA) return followersB - followersA;
-        const storiesA = stories.filter((s) => s.authorId === a.id && s.visibility === 'public').length;
-        const storiesB = stories.filter((s) => s.authorId === b.id && s.visibility === 'public').length;
-        return storiesB - storiesA;
+        if (b.totalLikes !== a.totalLikes) return b.totalLikes - a.totalLikes; // En çok beğeni alan üye en başta
+        if (b.totalReads !== a.totalReads) return b.totalReads - a.totalReads;
+        return (b.followers?.length || 0) - (a.followers?.length || 0);
       });
   }, [users, stories]);
 
@@ -419,6 +431,16 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
               <span>{cat}</span>
             </button>
           ))}
+
+          {/* Tüm Kategoriler Sayfasına Git */}
+          <button
+            onClick={() => setActiveView('categories')}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 border border-purple-200/60 dark:border-purple-900/60 hover:bg-purple-100 dark:hover:bg-purple-900/80 shrink-0 cursor-pointer"
+            title="Tüm edebiyat kategorilerini sayfa olarak görüntüle"
+          >
+            <Grid className="w-3.5 h-3.5" />
+            <span>Tüm Kategoriler ({ALL_CATEGORIES_DATA.length || 23}) →</span>
+          </button>
         </div>
 
         {/* Popular Tags Chips Bar */}
@@ -586,76 +608,122 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
         </section>
       )}
 
-      {/* Hero Featured Story Banner */}
+      {/* Hero Featured Story Banner (Haftanın Popüleri) */}
       {featuredStory && !filters.query && filters.category === 'Tümü' && (
-        <section className="relative rounded-3xl overflow-hidden bg-transparent backdrop-blur-md border border-purple-500/20 shadow-sm">
-          <div className="relative z-10 p-6 sm:p-10 lg:p-12 flex flex-col md:flex-row items-center gap-8 bg-transparent">
+        <section className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-purple-50/70 via-white to-indigo-50/50 dark:from-slate-900 dark:via-slate-900/95 dark:to-purple-950/40 border border-purple-200/80 dark:border-purple-900/60 shadow-xl shadow-purple-500/5 transition-all">
+          {/* Background Ambient Glows */}
+          <div className="absolute top-0 -left-12 w-72 h-72 bg-purple-500/10 dark:bg-purple-500/20 rounded-full filter blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 -right-12 w-72 h-72 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full filter blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 p-5 sm:p-8 lg:p-10 flex flex-col md:flex-row items-center gap-6 sm:gap-8 lg:gap-10">
             
-            {/* Left Info */}
-            <div className="flex-1 space-y-4 text-left">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold shadow-md shadow-purple-500/20">
-                  <Flame className="w-3.5 h-3.5" /> HAFTANIN POPÜLERİ
+            {/* Cover: Left on Desktop, Top & Large on Mobile */}
+            <div 
+              onClick={() => openStoryDetail(featuredStory.id)}
+              className="relative w-48 sm:w-56 md:w-52 lg:w-64 aspect-[2/3] flex-shrink-0 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-purple-500/25 dark:ring-purple-500/30 group cursor-pointer transform hover:-translate-y-1 hover:shadow-purple-500/20 transition-all duration-300 mx-auto md:mx-0 bg-slate-200 dark:bg-slate-800"
+            >
+              <img 
+                src={featuredStory.coverUrl} 
+                alt={featuredStory.title} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              />
+
+              {/* Top Right +18 Badge */}
+              {featuredStory.isNsfw && (
+                <div className="absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded-md bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-xs shadow-lg border border-white/25 tracking-tighter">
+                  +18
+                </div>
+              )}
+
+              {/* Bottom stats overlay on cover */}
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+              <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white text-[11px] font-bold pointer-events-none">
+                <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md">
+                  <BookOpen className="w-3 h-3 text-purple-300" />
+                  {featuredStory.chapters.length} Bölüm
                 </span>
-                <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-semibold border border-purple-300 dark:border-purple-500/30">
-                  {featuredStory.category}
+                <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md">
+                  <Eye className="w-3 h-3 text-blue-300" />
+                  {featuredStory.reads > 1000 ? `${(featuredStory.reads / 1000).toFixed(1)}k` : featuredStory.reads}
                 </span>
               </div>
+            </div>
 
-              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+            {/* Story Details & Actions */}
+            <div className="flex-1 space-y-4 text-center md:text-left min-w-0">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white text-xs font-black shadow-md shadow-purple-500/25 tracking-wide">
+                  <Flame className="w-3.5 h-3.5 fill-current" /> HAFTANIN POPÜLERİ
+                </span>
+                <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-xs font-bold border border-purple-200 dark:border-purple-800">
+                  {featuredStory.category}
+                </span>
+                {(featuredStory.status === 'completed' || featuredStory.isCompleted) && (
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Tamamlandı
+                  </span>
+                )}
+              </div>
+
+              <h1 
+                onClick={() => openStoryDetail(featuredStory.id)}
+                className="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight hover:text-purple-600 dark:hover:text-purple-400 cursor-pointer transition-colors"
+              >
                 {featuredStory.title}
               </h1>
 
-              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed max-w-2xl font-light">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-3 sm:line-clamp-4 leading-relaxed font-normal">
                 {featuredStory.summary}
               </p>
 
-              {/* Author and CTA */}
-              <div className="pt-2 flex flex-wrap items-center gap-6">
+              {/* Author & CTA Bar */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200/60 dark:border-slate-800/80">
+                {/* Author */}
                 <div 
                   className="flex items-center gap-3 cursor-pointer group/author"
                   onClick={() => openAuthorProfile(featuredStory.authorId)}
                 >
-                  <img src={featuredStory.authorAvatar} alt={featuredStory.authorName} className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500" />
-                  <div>
+                  <img 
+                    src={featuredStory.authorAvatar} 
+                    alt={featuredStory.authorName} 
+                    className="w-11 h-11 rounded-full object-cover ring-2 ring-purple-500 shadow-md group-hover/author:scale-105 transition-transform" 
+                  />
+                  <div className="text-left">
                     <p className="text-sm font-bold text-slate-900 dark:text-white group-hover/author:text-purple-600 dark:group-hover/author:text-purple-300 transition-colors">
                       {featuredStory.authorName}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-purple-300/80">@{featuredStory.authorUsername}</p>
+                    <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">@{featuredStory.authorUsername}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                {/* Buttons */}
+                <div className="flex items-center gap-2.5">
                   <button
                     onClick={() => openStoryReader(featuredStory.id)}
-                    className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 text-white font-bold text-xs shadow-lg shadow-purple-500/30 hover:scale-105 transition-all duration-200"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-purple-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
                   >
-                    Okumaya Başla
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Okumaya Başla</span>
                   </button>
                   <button
                     onClick={() => openStoryDetail(featuredStory.id)}
-                    className="px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-purple-400 font-bold text-xs transition-all"
+                    className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-purple-400 font-bold text-xs transition-all"
                   >
                     Detaylar
                   </button>
                   <button
                     onClick={() => toggleLibraryStory(featuredStory.id)}
-                    className={`p-2.5 rounded-2xl border transition-all ${
+                    className={`p-2.5 rounded-xl border transition-all ${
                       isStoryInLibrary(featuredStory.id)
-                        ? 'bg-purple-600 border-purple-500 text-white'
-                        : 'bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-purple-500'
+                        ? 'bg-purple-600 border-purple-500 text-white shadow-md'
+                        : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-purple-500 hover:text-purple-600'
                     }`}
-                    title="Kütüphaneye Ekle"
+                    title={isStoryInLibrary(featuredStory.id) ? 'Kütüphaneden Çıkar' : 'Kütüphaneye Ekle'}
                   >
                     <BookOpen className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* Right Vertical Cover Preview */}
-            <div className="w-32 sm:w-40 aspect-[2/3] flex-shrink-0 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-purple-500/20 transform rotate-1 hover:rotate-0 transition-transform duration-500 cursor-pointer" onClick={() => openStoryDetail(featuredStory.id)}>
-              <img src={featuredStory.coverUrl} alt={featuredStory.title} className="w-full h-full object-cover" />
             </div>
 
           </div>
@@ -783,7 +851,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
         </section>
       )}
 
-      {/* Featured Authors Spotlight ("Öne Çıkan Yazarlar" - En çok takipçisi olanlar) */}
+      {/* Featured Authors Spotlight ("Öne Çıkan Yazarlar" - Hikayeleri En Çok Beğeni Alanlar) */}
       {!filters.query && filters.category === 'Tümü' && sortedFeaturedAuthors.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
@@ -791,8 +859,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
               <Crown className="w-5 h-5 text-amber-500 fill-amber-500/20" />
               Öne Çıkan Yazarlar
             </h2>
-            <span className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1">
-              <UserCheck className="w-3.5 h-3.5" /> En Çok Takip Edilen Kalemler
+            <span className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 rounded-full border border-rose-200/60 dark:border-rose-900/60">
+              <Heart className="w-3.5 h-3.5 fill-current text-rose-500" /> Hikayeleri En Çok Beğenilen Yazarlar
             </span>
           </div>
 
@@ -800,8 +868,6 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
             {sortedFeaturedAuthors.map((author, index) => {
               const isFollowing = currentUser?.following?.includes(author.id);
               const isSelf = currentUser?.id === author.id;
-              const authorStoriesCount = stories.filter((s) => s.authorId === author.id && s.visibility === 'public').length;
-              const followersCount = author.followers?.length || 0;
 
               return (
                 <div 
@@ -814,24 +880,24 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
                 >
                   {index < 3 && (
                     <div 
-                      className={`absolute -top-2.5 left-4 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm ${
+                      className={`absolute -top-2.5 left-4 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm ${
                         index === 0
-                          ? 'bg-amber-500 text-white'
+                          ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white'
                           : index === 1
-                            ? 'bg-slate-400 text-white'
+                            ? 'bg-slate-500 text-white'
                             : 'bg-amber-700 text-white'
                       }`}
                     >
                       <Crown className="w-3 h-3 fill-current" />
-                      {index === 0 ? '1. Lider Yazar' : `${index + 1}. Sıra`}
+                      {index === 0 ? '#1 En Çok Beğenilen' : `${index + 1}. Sıra`}
                     </div>
                   )}
 
-                  <div className="relative">
+                  <div className="relative flex-shrink-0">
                     <img 
                       src={author.avatar} 
                       alt={author.name} 
-                      className="w-13 h-13 rounded-xl object-cover ring-2 ring-purple-500/20 cursor-pointer"
+                      className="w-13 h-13 rounded-xl object-cover ring-2 ring-purple-500/20 cursor-pointer hover:scale-105 transition-transform"
                       onClick={() => openAuthorProfile(author.id)}
                     />
                   </div>
@@ -844,12 +910,13 @@ export const ExploreView: React.FC<ExploreViewProps> = ({ onOpenCategoriesModal 
                       {author.name}
                     </h4>
                     <p className="text-[11px] text-slate-400 truncate mb-1">@{author.username}</p>
-                    <div className="flex items-center gap-2 text-[10px] font-bold">
-                      <span className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-200/50 dark:border-purple-900/50">
-                        {followersCount} Takipçi
+                    <div className="flex items-center flex-wrap gap-1.5 text-[10px] font-bold">
+                      <span className="text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-lg border border-rose-200/50 dark:border-rose-900/50 flex items-center gap-1">
+                        <Heart className="w-2.5 h-2.5 fill-current" />
+                        {author.totalLikes} Beğeni
                       </span>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        {authorStoriesCount} Hikaye
+                      <span className="text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-200/50 dark:border-purple-900/50">
+                        {author.authorStoriesCount} Hikaye
                       </span>
                     </div>
                   </div>

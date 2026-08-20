@@ -286,17 +286,6 @@ export const UserProfileView: React.FC = () => {
 
             {/* Follow / Edit / Settings Buttons */}
             <div className="flex items-center gap-3 self-center sm:self-auto flex-wrap">
-              {isSelf && (
-                <a
-                  href="https://wattyboon-yonetim-paneli.ai.studio/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 via-rose-600 to-amber-600 hover:opacity-90 text-white font-extrabold text-xs shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all cursor-pointer"
-                >
-                  <Shield className="w-4 h-4 text-amber-300" />
-                  <span>Yönetim Paneli</span>
-                </a>
-              )}
               {isSelf ? (
                 <>
                   <button

@@ -1,7 +1,7 @@
 import React from 'react';
 import { WattyboonLogo } from './WattyboonLogo';
 import { InfoTabType } from './InfoModal';
-import { BookOpen, Compass, PenTool, Bookmark, Heart } from 'lucide-react';
+import { BookOpen, Compass, PenTool, Bookmark, Heart, Grid, MessageSquare, Mail, Instagram, MessageCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface FooterProps {
@@ -9,18 +9,21 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
-  const { setActiveView, openStoryEditor, setSelectedCategoryFilter, setSelectedTagFilter } = useApp();
+  const { setActiveView, openStoryEditor, setSelectedCategoryFilter } = useApp();
 
   return (
     <footer className="w-full bg-white dark:bg-slate-950 border-t border-slate-200/80 dark:border-slate-800/80 transition-colors duration-200 py-10 mt-12 mb-16 md:mb-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           
           {/* Brand Info */}
-          <div className="space-y-3 md:col-span-1">
+          <div className="space-y-3">
             <div 
-              onClick={() => setActiveView('explore')}
+              onClick={() => {
+                setSelectedCategoryFilter('Tümü');
+                setActiveView('explore');
+              }}
               className="cursor-pointer group select-none inline-block hover:opacity-90 transition-opacity"
             >
               <WattyboonLogo className="text-2xl" />
@@ -38,10 +41,21 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
             <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
               <li>
                 <button 
-                  onClick={() => setActiveView('explore')} 
+                  onClick={() => {
+                    setSelectedCategoryFilter('Tümü');
+                    setActiveView('explore');
+                  }} 
                   className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex items-center gap-1.5"
                 >
                   <Compass className="w-3.5 h-3.5" /> Trend Hikayeler
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => setActiveView('categories')} 
+                  className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex items-center gap-1.5"
+                >
+                  <Grid className="w-3.5 h-3.5" /> Tüm Kategoriler
                 </button>
               </li>
               <li>
@@ -50,6 +64,14 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
                   className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex items-center gap-1.5"
                 >
                   <Bookmark className="w-3.5 h-3.5" /> Okuma Listelerim
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => setActiveView('forum')} 
+                  className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex items-center gap-1.5"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" /> Topluluk ve Forum
                 </button>
               </li>
               <li>
@@ -63,10 +85,10 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
             </ul>
           </div>
 
-          {/* Info & Support */}
+          {/* Support */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Kurumsal & Destek
+              Destek
             </h4>
             <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
               <li>
@@ -98,8 +120,67 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
                   onClick={() => onOpenInfoModal('contact')} 
                   className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors font-medium text-purple-600 dark:text-purple-400"
                 >
-                  İletişim
+                  İletişim Formu
                 </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Social Media - Takip Et */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+              Takip Et
+            </h4>
+            <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+              <li>
+                <a
+                  href="https://instagram.com/wattyboon"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-pink-600 dark:hover:text-pink-400 transition-colors flex items-center gap-2.5 group"
+                >
+                  <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 group-hover:scale-110 transition-transform">
+                    <Instagram className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-medium text-slate-700 dark:text-slate-300 group-hover:text-pink-600 dark:group-hover:text-pink-400">Instagram</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://x.com/wattyboon"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-2.5 group"
+                >
+                  <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-black group-hover:scale-110 transition-transform flex items-center justify-center w-6.5 h-6.5 text-xs">
+                    𝕏
+                  </div>
+                  <span className="font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">X (Twitter)</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://discord.gg/wattyboon"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-2.5 group"
+                >
+                  <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                    <MessageCircle className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-medium text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Discord</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="mailto:iletisim@wattyboon.com"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center gap-2.5 group"
+                >
+                  <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                    <Mail className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-medium text-slate-700 dark:text-slate-300 group-hover:text-purple-600 dark:group-hover:text-purple-400">E-Posta</span>
+                </a>
               </li>
             </ul>
           </div>
@@ -109,6 +190,21 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
         {/* Bottom Rights */}
         <div className="pt-6 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-500">
           <p>© {new Date().getFullYear()} WattyBoon. Tüm hakları saklıdır.</p>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => onOpenInfoModal('privacy')}
+              className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+            >
+              Gizlilik ve Güvenlik
+            </button>
+            <span>•</span>
+            <button 
+              onClick={() => onOpenInfoModal('help')}
+              className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+            >
+              Sıkça Sorulan Sorular
+            </button>
+          </div>
         </div>
 
       </div>

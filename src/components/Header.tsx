@@ -36,10 +36,9 @@ import {
 
 interface HeaderProps {
   onOpenInfoModal?: (tab: InfoTabType) => void;
-  onOpenCategoriesModal?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategoriesModal }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal }) => {
   const { 
     isDarkMode, 
     toggleDarkMode, 
@@ -109,21 +108,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
             Keşfet
           </button>
 
-          {/* Kategoriler Butonu (Popup Açar) */}
+          {/* Kategoriler Butonu (Sayfa Olarak Açar) */}
           <button
-            onClick={() => {
-              if (onOpenCategoriesModal) {
-                onOpenCategoriesModal();
-              }
-            }}
+            onClick={() => setActiveView('categories')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              selectedCategoryFilter !== 'Tümü'
-                ? 'bg-purple-600 text-white shadow-sm shadow-purple-500/20'
+              activeView === 'categories'
+                ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-300 shadow-sm'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             <Grid className="w-4 h-4" />
-            <span>{selectedCategoryFilter !== 'Tümü' ? selectedCategoryFilter : 'Kategoriler'}</span>
+            <span>Kategoriler</span>
           </button>
 
           <button
@@ -283,20 +278,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal, onOpenCategorie
                       </div>
                       <p className="text-xs text-purple-600 dark:text-purple-400">@{currentUser.username}</p>
                     </div>
-
-                    <a
-                      href="https://wattyboon-yonetim-paneli.ai.studio/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-700 hover:to-rose-700 shadow-md shadow-purple-500/20 transition-all mb-1"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Crown className="w-4 h-4 text-amber-300" />
-                        <span>Yönetim Paneli</span>
-                      </div>
-                      <ExternalLink className="w-3.5 h-3.5 opacity-80" />
-                    </a>
 
                     <button
                       onClick={() => {

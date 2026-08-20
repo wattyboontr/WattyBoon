@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ExploreView } from './components/ExploreView';
+import { CategoriesView } from './components/CategoriesView';
 import { LibraryView } from './components/LibraryView';
 import { StoryEditor } from './components/StoryEditor';
 import { StoryReader } from './components/StoryReader';
@@ -12,17 +13,15 @@ import { StoryDetailView } from './components/StoryDetailView';
 import { AuthModal } from './components/AuthModal';
 import { MessagesModal } from './components/MessagesModal';
 import { InfoModal, InfoTabType } from './components/InfoModal';
-import { CategoriesModal } from './components/CategoriesModal';
 import { ForumView } from './components/ForumView';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { Footer } from './components/Footer';
-import { ShieldAlert, Lock } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { activeView } = useApp();
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [infoModalTab, setInfoModalTab] = useState<InfoTabType>('about');
-  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const [copyWarning, setCopyWarning] = useState<string | null>(null);
 
   // Global Copy Protection & Content Security
@@ -40,7 +39,6 @@ const AppContent: React.FC = () => {
 
     const handleContextMenu = (e: MouseEvent) => {
       if (isInputOrEditable(e.target)) return; // Allow right click in input fields for paste/spellcheck
-      // Check if clicked element is an image or inside reader/story text
       const target = e.target as HTMLElement;
       if (target.tagName.toLowerCase() === 'img' || target.closest('img') || target.closest('.prevent-copy, .story-content, .story-reader-text, main')) {
         e.preventDefault();
@@ -58,7 +56,7 @@ const AppContent: React.FC = () => {
     };
 
     const handleCopy = (e: ClipboardEvent) => {
-      if (isInputOrEditable(e.target)) return; // Allow copying from form fields
+      if (isInputOrEditable(e.target)) return;
       e.preventDefault();
       setCopyWarning('🔒 Telif Koruması: WattyBoon üzerindeki eserler kopyalamaya karşı koruma altındadır.');
     };
@@ -71,7 +69,6 @@ const AppContent: React.FC = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isInputOrEditable(e.target)) return;
-      // Prevent Ctrl+C / Cmd+C / Ctrl+U / Ctrl+S / Ctrl+P / F12 / DevTools
       if ((e.ctrlKey || e.metaKey) && ['c', 'C', 'u', 'U', 's', 'S', 'p', 'P'].includes(e.key)) {
         e.preventDefault();
         setCopyWarning('🔒 Telif Koruması: Kısayol tuşları ile kopyalama / kaydetme / yazdırma devre dışıdır.');
@@ -109,10 +106,6 @@ const AppContent: React.FC = () => {
     setIsInfoModalOpen(true);
   };
 
-  const openCategoriesModal = () => {
-    setIsCategoriesModalOpen(true);
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 select-none">
       {/* Copy Protection Security Notification Toast */}
@@ -125,10 +118,11 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      <Header onOpenInfoModal={openInfoModal} onOpenCategoriesModal={openCategoriesModal} />
+      <Header onOpenInfoModal={openInfoModal} />
 
       <main className="flex-1">
-        {activeView === 'explore' && <ExploreView onOpenCategoriesModal={openCategoriesModal} />}
+        {activeView === 'explore' && <ExploreView />}
+        {activeView === 'categories' && <CategoriesView />}
         {activeView === 'story-detail' && <StoryDetailView />}
         {activeView === 'library' && <LibraryView />}
         {activeView === 'forum' && <ForumView />}
@@ -147,10 +141,6 @@ const AppContent: React.FC = () => {
         isOpen={isInfoModalOpen} 
         onClose={() => setIsInfoModalOpen(false)} 
         initialTab={infoModalTab} 
-      />
-      <CategoriesModal
-        isOpen={isCategoriesModalOpen}
-        onClose={() => setIsCategoriesModalOpen(false)}
       />
     </div>
   );
