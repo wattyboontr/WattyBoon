@@ -14,7 +14,6 @@ import {
   Pin,
   Trash2,
   FileText,
-  Download,
   BookOpen,
   FolderArchive,
   UploadCloud,
@@ -69,7 +68,6 @@ export const ForumView: React.FC = () => {
     toggleLikeArchivedStory,
     addArchivedStoryComment,
     deleteArchivedStoryComment,
-    incrementArchivedStoryDownloads,
     currentUser,
     openAuthorProfile,
     setIsAuthModalOpen
@@ -511,11 +509,11 @@ export const ForumView: React.FC = () => {
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <span>Silinen & Kayıp Eserler Kütüphanesi</span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-extrabold">
-                    Topluluk Arşivi
+                    Çevrimiçi Okuma & Anılar
                   </span>
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
-                  Platformlardan kaldırılan nostaljik ve en sevilen kitapları yaşatıyoruz. Arşivdeki PDF'leri doğrudan indirebilir, tarayıcıda okuyabilir veya kendi arşivindeki PDF'leri hikaye adı, yazar adı, bölüm sayısı ve özetle yükleyerek okurlara ulaştırabilirsin.
+                  Platformlardan kaldırılan nostaljik ve kayıp kitapları yaşatıyoruz. Eserleri uygulama içinde güvenle okuyabilir, beğenebilir, anı ve yorumlarınızı paylaşabilirsiniz. Kendi arşivinizdeki kayıp eserleri de PDF olarak yükleyebilirsiniz.
                 </p>
               </div>
             </div>
@@ -674,59 +672,41 @@ export const ForumView: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Action Buttons: Read PDF, Download, Likes, Comments */}
-                      <div className="space-y-2 pt-1">
-                        <div className="grid grid-cols-2 gap-2">
-                          {/* PDF Oku / Görüntüle */}
-                          <button
-                            onClick={() => setSelectedPdfStory(story)}
-                            className="py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>PDF Oku</span>
-                          </button>
+                      {/* Action Buttons: Read PDF (Only in-app reader, no download), Likes, Comments */}
+                      <div className="space-y-3 pt-1">
+                        {/* PDF Oku Butonu */}
+                        <button
+                          onClick={() => setSelectedPdfStory(story)}
+                          className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>PDF Oku</span>
+                        </button>
 
-                          {/* PDF İndir */}
-                          <a
-                            href={story.pdfUrl}
-                            download={story.pdfFileName || `${story.title}.pdf`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => incrementArchivedStoryDownloads(story.id)}
-                            className="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>İndir ({story.pdfFileSize || 'PDF'})</span>
-                          </a>
-                        </div>
-
-                        {/* Social Footer */}
+                        {/* Social Footer: Likes & Comments */}
                         <div className="flex items-center justify-between pt-1">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5">
                             {/* Like Button */}
                             <button
                               onClick={() => toggleLikeArchivedStory(story.id)}
-                              className={`flex items-center gap-1 text-xs font-bold transition-colors cursor-pointer ${
-                                isLiked ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                isLiked 
+                                  ? 'bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900' 
+                                  : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-rose-500 hover:border-rose-300'
                               }`}
                             >
-                              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current text-rose-500' : ''}`} />
+                              <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current text-rose-500' : ''}`} />
                               <span>{story.likes || 0}</span>
                             </button>
 
                             {/* Discussion Comments Button */}
                             <button
                               onClick={() => setSelectedCommentsStory(story)}
-                              className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-purple-500 transition-colors cursor-pointer"
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:text-purple-600 dark:hover:text-purple-400 hover:border-purple-300 transition-all cursor-pointer"
                             >
-                              <MessageCircle className="w-4 h-4" />
-                              <span>{(story.comments || []).length} Anı / Yorum</span>
+                              <MessageCircle className="w-3.5 h-3.5 text-purple-500" />
+                              <span>{(story.comments || []).length} Yorum & Anı</span>
                             </button>
-
-                            {/* Downloads Count */}
-                            <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
-                              <Download className="w-3 h-3" /> {story.downloads || 0}
-                            </span>
                           </div>
 
                           {canDelete && (
@@ -736,7 +716,7 @@ export const ForumView: React.FC = () => {
                                   deleteArchivedStory(story.id);
                                 }
                               }}
-                              className="p-1 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-xl text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/80 border border-transparent hover:border-rose-200 dark:hover:border-rose-900 transition-colors cursor-pointer"
                               title="Arşivden Sil"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -993,7 +973,7 @@ export const ForumView: React.FC = () => {
                 {/* Veya doğrudan PDF Web Bağlantısı */}
                 <div className="pt-2 border-t border-amber-200/40 dark:border-amber-800/40">
                   <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                    Veya PDF Doğrudan İndirme Bağlantısı (URL):
+                    Veya PDF Web Bağlantısı (URL):
                   </label>
                   <input
                     type="url"
@@ -1088,18 +1068,6 @@ export const ForumView: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <a
-                  href={selectedPdfStory.pdfUrl}
-                  download={selectedPdfStory.pdfFileName || `${selectedPdfStory.title}.pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => incrementArchivedStoryDownloads(selectedPdfStory.id)}
-                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">İndir</span>
-                </a>
-
                 <button
                   onClick={() => setSelectedPdfStory(null)}
                   className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"

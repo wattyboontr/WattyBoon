@@ -729,111 +729,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Initial Sample Archived Stories (Nostalgic lost wattpad and classic stories)
-  const INITIAL_ARCHIVED_STORIES: ArchivedStory[] = [
-    {
-      id: 'arch_1',
-      title: 'Karanlık Lise (Özel Bölümler & Ekler)',
-      originalAuthor: 'Alya Öztürk',
-      chapterCount: '45 Bölüm',
-      summary: 'Platformlardan kaldırılan efsanevi gençlik ve gerilim klasiği Karanlık Lise serisinin özel bölümleri, yazarın nostaljik notları ve final sahneleri bir arada.',
-      category: 'Genç Kurgu',
-      tags: ['KaranlıkLise', 'Nostalji', 'KayıpHikayeler', 'Efsane'],
-      pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-      pdfFileName: 'karanlik-lise-ozel-bolumler.pdf',
-      pdfFileSize: '3.4 MB',
-      coverUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=800',
-      addedByUserId: 'system_archivist',
-      addedByUserName: 'WattyBoon Arşiv Ekibi',
-      addedByUserUsername: 'arsiv_kulubu',
-      addedByUserAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=arsivkulubu',
-      addedAt: '2024-01-15',
-      likes: 142,
-      likedBy: [],
-      downloads: 389,
-      comments: [
-        {
-          id: 'arch_c1',
-          userId: 'u_retro1',
-          userName: 'Zeynep Ece',
-          userUsername: 'zeynepece',
-          userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zeynepece',
-          content: 'Yıllardır bu özel sahneleri arıyordum, arşive eklediğiniz için sonsuz teşekkürler!',
-          createdAt: '2024-01-18',
-          likes: 12,
-          likedBy: []
-        }
-      ]
-    },
-    {
-      id: 'arch_2',
-      title: 'Yabancı: Veyl & Şahmeran (Nostaljik İlk Taslak)',
-      originalAuthor: 'Öznur Yıldırım',
-      chapterCount: '52 Bölüm',
-      summary: 'Ediz Çağıran ve Doğa Güngör hikayesinin internette ilk yayınlanan, daha sonra basılı kitap versiyonunda değiştirilen orijinal ham taslak bölümleri.',
-      category: 'Gerilim',
-      tags: ['Yabancı', 'EdizDoğa', 'KayıpTaslak', 'WattyKlasikleri'],
-      pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-      pdfFileName: 'yabanci-veyl-sahmeran-ilk-taslak.pdf',
-      pdfFileSize: '4.8 MB',
-      coverUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800',
-      addedByUserId: 'system_archivist',
-      addedByUserName: 'WattyBoon Arşiv Ekibi',
-      addedByUserUsername: 'arsiv_kulubu',
-      addedByUserAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=arsivkulubu',
-      addedAt: '2024-02-02',
-      likes: 215,
-      likedBy: [],
-      downloads: 620,
-      comments: [
-        {
-          id: 'arch_c2',
-          userId: 'u_retro2',
-          userName: 'Mert Aksoy',
-          userUsername: 'mertaksoy',
-          userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mertaksoy',
-          content: 'Orijinal versiyonunun atmosferi bambaşkaydı. Harika bir arşiv çalışması.',
-          createdAt: '2024-02-05',
-          likes: 19,
-          likedBy: []
-        }
-      ]
-    },
-    {
-      id: 'arch_3',
-      title: 'Sokak Nöbetçileri (Kayıp Özel Sahneler)',
-      originalAuthor: 'Aslı Arslan',
-      chapterCount: '38 Bölüm',
-      summary: 'Nisan ve sokak nöbetçileri ekibinin yayınlanıp sonradan kaldırılan bayram ve yılbaşı özel bölümleri PDF derlemesi.',
-      category: 'Genç Kurgu',
-      tags: ['SokakNöbetçileri', 'ÖzelBölümler', 'AslıArslan', 'PDF'],
-      pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-      pdfFileName: 'sokak-nobetculeri-kayip-sahneler.pdf',
-      pdfFileSize: '2.9 MB',
-      coverUrl: 'https://images.unsplash.com/photo-1476275466078-4007374efbbe?auto=format&fit=crop&q=80&w=800',
-      addedByUserId: 'system_archivist',
-      addedByUserName: 'WattyBoon Arşiv Ekibi',
-      addedByUserUsername: 'arsiv_kulubu',
-      addedByUserAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=arsivkulubu',
-      addedAt: '2024-02-14',
-      likes: 188,
-      likedBy: [],
-      downloads: 472,
-      comments: []
-    }
-  ];
-
-  // Archived Stories State (Kayıp & Silinen Eserler Arşivi)
+  // Archived Stories State (Kayıp & Silinen Eserler Arşivi - Üyelerin eklediği PDF'ler)
   const [archivedStories, setArchivedStories] = useState<ArchivedStory[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}archived_stories`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          // Filter out previous sample items if any existed in localStorage
+          const filtered = parsed.filter(item => item.id !== 'arch_1' && item.id !== 'arch_2' && item.id !== 'arch_3');
+          return filtered;
+        }
       }
-      return INITIAL_ARCHIVED_STORIES;
+      return [];
     } catch {
-      return INITIAL_ARCHIVED_STORIES;
+      return [];
     }
   });
 
