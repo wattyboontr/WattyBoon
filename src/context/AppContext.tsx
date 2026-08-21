@@ -19,8 +19,22 @@ import {
   browserLocalPersistence,
   inMemoryPersistence
 } from 'firebase/auth';
+import {
+  fetchStoriesFromCloudflare,
+  saveStoryToCloudflare,
+  bulkSaveStoriesToCloudflare,
+  deleteStoryFromCloudflare,
+  fetchForumTopicsFromCloudflare,
+  saveForumTopicToCloudflare,
+  bulkSaveForumTopicsToCloudflare,
+  deleteForumTopicFromCloudflare,
+  fetchParagraphCommentsFromCloudflare,
+  saveParagraphCommentToCloudflare,
+  deleteParagraphCommentFromCloudflare,
+  CLOUDFLARE_STORAGE_ACCOUNT,
+} from '../lib/cloudflare';
 
-// Firestore Async Persistence Helpers
+// Firestore Async Persistence Helpers (Users, Notifications, Messages, and Archive)
 const syncUserToFirestore = async (user: User) => {
   try {
     await setDoc(doc(db, 'users', user.id), user, { merge: true });
@@ -29,19 +43,20 @@ const syncUserToFirestore = async (user: User) => {
   }
 };
 
+// Cloudflare Storage Helpers (Stories & Chapters - wattyboontr@gmail.com)
 const syncStoryToFirestore = async (story: Story) => {
   try {
-    await setDoc(doc(db, 'stories', story.id), story, { merge: true });
+    await saveStoryToCloudflare(story);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `stories/${story.id}`);
+    console.warn('[Cloudflare Storage] Story sync error:', err);
   }
 };
 
 const deleteStoryFromFirestore = async (storyId: string) => {
   try {
-    await deleteDoc(doc(db, 'stories', storyId));
+    await deleteStoryFromCloudflare(storyId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `stories/${storyId}`);
+    console.warn('[Cloudflare Storage] Story deletion error:', err);
   }
 };
 
@@ -61,30 +76,41 @@ const syncMessageToFirestore = async (msg: DirectMessage) => {
   }
 };
 
+// Cloudflare Storage Helpers (Paragraph Comments - wattyboontr@gmail.com)
 const syncParagraphCommentToFirestore = async (pcomm: ParagraphComment) => {
   try {
-    await setDoc(doc(db, 'paragraphComments', pcomm.id), pcomm, { merge: true });
+    await saveParagraphCommentToCloudflare(pcomm);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `paragraphComments/${pcomm.id}`);
+    console.warn('[Cloudflare Storage] Paragraph comment sync error:', err);
   }
 };
 
+const deleteParagraphCommentFromFirestore = async (commentId: string) => {
+  try {
+    await deleteParagraphCommentFromCloudflare(commentId);
+  } catch (err) {
+    console.warn('[Cloudflare Storage] Paragraph comment deletion error:', err);
+  }
+};
+
+// Cloudflare Storage Helpers (Forum Discussions - wattyboontr@gmail.com)
 const syncForumTopicToFirestore = async (topic: ForumTopic) => {
   try {
-    await setDoc(doc(db, 'forumTopics', topic.id), topic, { merge: true });
+    await saveForumTopicToCloudflare(topic);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `forumTopics/${topic.id}`);
+    console.warn('[Cloudflare Storage] Forum topic sync error:', err);
   }
 };
 
 const deleteForumTopicFromFirestore = async (topicId: string) => {
   try {
-    await deleteDoc(doc(db, 'forumTopics', topicId));
+    await deleteForumTopicFromCloudflare(topicId);
   } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `forumTopics/${topicId}`);
+    console.warn('[Cloudflare Storage] Forum topic deletion error:', err);
   }
 };
 
+// Firestore Async Persistence Helpers (Kayıp ve Silinen Eserler Arşivi - Firebase)
 const syncArchivedStoryToFirestore = async (archiveStory: ArchivedStory) => {
   try {
     await setDoc(doc(db, 'archivedStories', archiveStory.id), archiveStory, { merge: true });
@@ -98,14 +124,6 @@ const deleteArchivedStoryFromFirestore = async (archiveId: string) => {
     await deleteDoc(doc(db, 'archivedStories', archiveId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `archivedStories/${archiveId}`);
-  }
-};
-
-const deleteParagraphCommentFromFirestore = async (commentId: string) => {
-  try {
-    await deleteDoc(doc(db, 'paragraphComments', commentId));
-  } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `paragraphComments/${commentId}`);
   }
 };
 
@@ -390,12 +408,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteUserDataCascade = async (userId: string) => {
     if (!userId) return;
 
-    // 1. Delete user's published stories (and chapters) from state & Firestore
+    // 1. Delete user's published stories (and chapters) from state & Cloudflare Storage
     setStories((prev) => {
       const remaining = prev.filter((s) => s.authorId !== userId);
       const deleted = prev.filter((s) => s.authorId === userId);
       deleted.forEach((s) => {
-        deleteDoc(doc(db, 'stories', s.id)).catch((err) => console.warn('Delete story doc error:', err));
+        deleteStoryFromCloudflare(s.id).catch((err) => console.warn('Delete story error:', err));
       });
       return remaining;
     });
@@ -420,22 +438,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return remaining;
     });
 
-    // 4. Delete paragraph comments by user
+    // 4. Delete paragraph comments by user from state & Cloudflare Storage
     setParagraphComments((prev) => {
       const remaining = prev.filter((pc) => pc.userId !== userId);
       const deleted = prev.filter((pc) => pc.userId === userId);
       deleted.forEach((pc) => {
-        deleteDoc(doc(db, 'paragraphComments', pc.id)).catch((err) => console.warn('Delete paragraphComment doc error:', err));
+        deleteParagraphCommentFromCloudflare(pc.id).catch((err) => console.warn('Delete paragraphComment error:', err));
       });
       return remaining;
     });
 
-    // 5. Delete forum topics & replies by user
+    // 5. Delete forum topics & replies by user from state & Cloudflare Storage
     setForumTopics((prev) => {
       const remaining = prev.filter((ft) => ft.authorId !== userId);
       const deleted = prev.filter((ft) => ft.authorId === userId);
       deleted.forEach((ft) => {
-        deleteDoc(doc(db, 'forumTopics', ft.id)).catch((err) => console.warn('Delete forumTopic doc error:', err));
+        deleteForumTopicFromCloudflare(ft.id).catch((err) => console.warn('Delete forumTopic error:', err));
       });
       return remaining.map((t) => ({
         ...t,
@@ -572,7 +590,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Stories state
+  // Stories state (Stored in Cloudflare Storage - wattyboontr@gmail.com)
   const [stories, setStories] = useState<Story[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}stories`);
@@ -594,23 +612,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [stories]);
 
-  // Firestore Realtime Stories Listener
+  // Cloudflare Realtime & Polling Listener for Stories (wattyboontr@gmail.com)
   useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'stories'), (snapshot) => {
-        if (snapshot && !snapshot.empty) {
-          const list: Story[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data && data.id) list.push(data as Story);
-          });
-          if (list.length > 0) setStories(list);
+    let isMounted = true;
+    const loadFromCloudflare = async () => {
+      try {
+        const cloudflareStories = await fetchStoriesFromCloudflare();
+        if (isMounted && cloudflareStories && cloudflareStories.length > 0) {
+          setStories(cloudflareStories);
+        } else if (isMounted && (!cloudflareStories || cloudflareStories.length === 0)) {
+          // Initialize Cloudflare storage with initial stories if first run
+          await bulkSaveStoriesToCloudflare(stories.length > 0 ? stories : INITIAL_STORIES);
         }
-      }, (err) => console.warn('Firestore stories snapshot warning:', err));
-      return () => unsub();
-    } catch (e) {
-      console.warn('Firestore stories listener error:', e);
-    }
+      } catch (err) {
+        console.warn('[Cloudflare Stories Sync] Load notice:', err);
+      }
+    };
+
+    loadFromCloudflare();
+    const interval = setInterval(loadFromCloudflare, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Notifications state
@@ -688,6 +712,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Forum Topics State
+  // Forum Topics State (Stored in Cloudflare Storage - wattyboontr@gmail.com)
   const [forumTopics, setForumTopics] = useState<ForumTopic[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}forum_topics`);
@@ -710,23 +735,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [forumTopics]);
 
-  // Firestore Realtime Forum Topics Listener
+  // Cloudflare Realtime & Polling Listener for Forum Topics (wattyboontr@gmail.com)
   useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'forumTopics'), (snapshot) => {
-        const list: ForumTopic[] = [];
-        if (snapshot && !snapshot.empty) {
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data && data.id) list.push(data as ForumTopic);
-          });
+    let isMounted = true;
+    const loadTopicsFromCloudflare = async () => {
+      try {
+        const cloudflareTopics = await fetchForumTopicsFromCloudflare();
+        if (isMounted && cloudflareTopics && cloudflareTopics.length > 0) {
+          setForumTopics(cloudflareTopics.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         }
-        setForumTopics(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      }, (err) => console.warn('Firestore forumTopics snapshot warning:', err));
-      return () => unsub();
-    } catch (e) {
-      console.warn('Firestore forumTopics listener error:', e);
-    }
+      } catch (err) {
+        console.warn('[Cloudflare Topics Sync] Load notice:', err);
+      }
+    };
+
+    loadTopicsFromCloudflare();
+    const interval = setInterval(loadTopicsFromCloudflare, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Archived Stories State (Kayıp & Silinen Eserler Arşivi - Üyelerin eklediği PDF'ler)
@@ -1701,7 +1729,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Paragraph Comments state
+  // Paragraph Comments state (Stored in Cloudflare Storage - wattyboontr@gmail.com)
   const [paragraphComments, setParagraphComments] = useState<ParagraphComment[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`);
     if (saved) return JSON.parse(saved);
@@ -1716,23 +1744,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [paragraphComments]);
 
-  // Firestore Realtime Paragraph Comments Listener
+  // Cloudflare Realtime & Polling Listener for Paragraph Comments (wattyboontr@gmail.com)
   useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'paragraphComments'), (snapshot) => {
-        const list: ParagraphComment[] = [];
-        if (snapshot && !snapshot.empty) {
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data && data.id) list.push(data as ParagraphComment);
-          });
+    let isMounted = true;
+    const loadPComments = async () => {
+      try {
+        const cloudflarePComments = await fetchParagraphCommentsFromCloudflare();
+        if (isMounted && Array.isArray(cloudflarePComments)) {
+          setParagraphComments(cloudflarePComments);
         }
-        setParagraphComments(list);
-      }, (err) => console.warn('Firestore paragraphComments snapshot warning:', err));
-      return () => unsub();
-    } catch (e) {
-      console.warn('Firestore paragraphComments listener error:', e);
-    }
+      } catch (err) {
+        console.warn('[Cloudflare Paragraph Comments Sync] Load notice:', err);
+      }
+    };
+
+    loadPComments();
+    const interval = setInterval(loadPComments, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
 

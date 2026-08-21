@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import { cloudflareStorage } from './src/server/cloudflareStorage';
 
 dotenv.config();
 
@@ -224,6 +225,146 @@ app.post('/api/ai/assistant', async (req, res) => {
   } catch (err: any) {
     console.error('AI Assistant Error:', err);
     return res.status(500).json({ error: err.message || 'Yapay zeka yanıt üretirken hata oluştu.' });
+  }
+});
+
+// ==========================================
+// Cloudflare Storage Endpoints (wattyboontr@gmail.com)
+// All stories and forum discussions are stored via Cloudflare
+// ==========================================
+
+// Cloudflare Storage Health & Status
+app.get('/api/cloudflare/status', (req, res) => {
+  try {
+    const status = cloudflareStorage.getStatus();
+    res.json(status);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Cloudflare status error' });
+  }
+});
+
+// STORIES (Hikayeler) Endpoints
+app.get('/api/cloudflare/stories', (req, res) => {
+  try {
+    const stories = cloudflareStorage.getStories();
+    res.json({ success: true, count: stories.length, data: stories });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch stories from Cloudflare storage' });
+  }
+});
+
+app.post('/api/cloudflare/stories', (req, res) => {
+  try {
+    const story = req.body;
+    if (!story || !story.id) {
+      return res.status(400).json({ error: 'Valid story object with an id is required' });
+    }
+    const updatedList = cloudflareStorage.saveStory(story);
+    res.json({ success: true, data: story, count: updatedList.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to save story to Cloudflare storage' });
+  }
+});
+
+app.post('/api/cloudflare/stories/bulk', (req, res) => {
+  try {
+    const stories = req.body;
+    if (!Array.isArray(stories)) {
+      return res.status(400).json({ error: 'Array of stories required' });
+    }
+    const updatedList = cloudflareStorage.setStories(stories);
+    res.json({ success: true, count: updatedList.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to bulk update stories' });
+  }
+});
+
+app.delete('/api/cloudflare/stories/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedList = cloudflareStorage.deleteStory(id);
+    res.json({ success: true, deletedId: id, remainingCount: updatedList.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete story from Cloudflare storage' });
+  }
+});
+
+// FORUM DISCUSSIONS (Tartışmalar & Forum Konuları) Endpoints
+app.get('/api/cloudflare/topics', (req, res) => {
+  try {
+    const topics = cloudflareStorage.getTopics();
+    res.json({ success: true, count: topics.length, data: topics });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch forum topics from Cloudflare storage' });
+  }
+});
+
+app.post('/api/cloudflare/topics', (req, res) => {
+  try {
+    const topic = req.body;
+    if (!topic || !topic.id) {
+      return res.status(400).json({ error: 'Valid topic object with an id is required' });
+    }
+    const updatedList = cloudflareStorage.saveTopic(topic);
+    res.json({ success: true, data: topic, count: updatedList.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to save topic to Cloudflare storage' });
+  }
+});
+
+app.post('/api/cloudflare/topics/bulk', (req, res) => {
+  try {
+    const topics = req.body;
+    if (!Array.isArray(topics)) {
+      return res.status(400).json({ error: 'Array of topics required' });
+    }
+    const updatedList = cloudflareStorage.setTopics(topics);
+    res.json({ success: true, count: updatedList.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to bulk update topics' });
+  }
+});
+
+app.delete('/api/cloudflare/topics/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedList = cloudflareStorage.deleteTopic(id);
+    res.json({ success: true, deletedId: id, remainingCount: updatedList.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete topic from Cloudflare storage' });
+  }
+});
+
+// PARAGRAPH COMMENTS (Paragraf İçi Yorumlar) Endpoints
+app.get('/api/cloudflare/paragraph-comments', (req, res) => {
+  try {
+    const comments = cloudflareStorage.getParagraphComments();
+    res.json({ success: true, count: comments.length, data: comments });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch paragraph comments from Cloudflare storage' });
+  }
+});
+
+app.post('/api/cloudflare/paragraph-comments', (req, res) => {
+  try {
+    const comment = req.body;
+    if (!comment || !comment.id) {
+      return res.status(400).json({ error: 'Valid comment object with an id is required' });
+    }
+    const updatedList = cloudflareStorage.saveParagraphComment(comment);
+    res.json({ success: true, data: comment, count: updatedList.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to save paragraph comment to Cloudflare storage' });
+  }
+});
+
+app.delete('/api/cloudflare/paragraph-comments/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedList = cloudflareStorage.deleteParagraphComment(id);
+    res.json({ success: true, deletedId: id, remainingCount: updatedList.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to delete paragraph comment from Cloudflare storage' });
   }
 });
 
