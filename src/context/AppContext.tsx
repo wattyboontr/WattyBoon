@@ -596,11 +596,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}stories`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
-      return INITIAL_STORIES;
+      return [];
     } catch {
-      return INITIAL_STORIES;
+      return [];
     }
   });
 
@@ -618,11 +618,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const loadFromCloudflare = async () => {
       try {
         const cloudflareStories = await fetchStoriesFromCloudflare();
-        if (isMounted && cloudflareStories && cloudflareStories.length > 0) {
+        if (isMounted && Array.isArray(cloudflareStories)) {
           setStories(cloudflareStories);
-        } else if (isMounted && (!cloudflareStories || cloudflareStories.length === 0)) {
-          // Initialize Cloudflare storage with initial stories if first run
-          await bulkSaveStoriesToCloudflare(stories.length > 0 ? stories : INITIAL_STORIES);
         }
       } catch (err) {
         console.warn('[Cloudflare Stories Sync] Load notice:', err);
