@@ -10,14 +10,14 @@ import {
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import appletConfig from '../../firebase-applet-config.json';
 
-const firebaseConfig: Record<string, any> = {
-  apiKey: appletConfig.apiKey || "AIzaSyBTtB_MP70tOJ-gZa0B6YF8OOJaKIloabk",
-  authDomain: appletConfig.authDomain || "wattyboon-94c69.firebaseapp.com",
-  databaseURL: (appletConfig as any).databaseURL || "https://wattyboon-94c69-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: appletConfig.projectId || "wattyboon-94c69",
-  storageBucket: appletConfig.storageBucket || "wattyboon-94c69.firebasestorage.app",
-  messagingSenderId: appletConfig.messagingSenderId || "227047858074",
-  appId: appletConfig.appId || "1:227047858074:web:fcbbb65ae4256bcd3be423",
+const firebaseConfig = {
+  apiKey: "AIzaSyBTtB_MP70tOJ-gZa0B6YF8OOJaKIloabk",
+  authDomain: "wattyboon-94c69.firebaseapp.com",
+  databaseURL: "https://wattyboon-94c69-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "wattyboon-94c69",
+  storageBucket: "wattyboon-94c69.firebasestorage.app",
+  messagingSenderId: "227047858074",
+  appId: "1:227047858074:web:fcbbb65ae4256bcd3be423"
 };
 
 if ((appletConfig as any).measurementId) {
