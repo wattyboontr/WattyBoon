@@ -110,6 +110,25 @@
         "likes": { "type": "number" }
       },
       "required": ["id", "title", "authorId", "content"]
+    },
+    "archivedStories": {
+      "title": "ArchivedStory",
+      "description": "Lost and deleted stories archived by community members with PDF files",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "originalAuthor": { "type": "string" },
+        "chapterCount": { "type": "string" },
+        "summary": { "type": "string" },
+        "category": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "addedByUserId": { "type": "string" },
+        "addedAt": { "type": "string" },
+        "likes": { "type": "number" },
+        "downloads": { "type": "number" }
+      },
+      "required": ["id", "title", "originalAuthor", "pdfUrl", "addedByUserId"]
     }
   },
   "firestore": {
@@ -136,6 +155,10 @@
     "/forumTopics/{topicId}": {
       "schema": { "$ref": "forumTopics" },
       "description": "Forum topics and community discussions"
+    },
+    "/archivedStories/{archiveId}": {
+      "schema": { "$ref": "archivedStories" },
+      "description": "Archived lost PDF stories uploaded by members"
     }
   }
 }

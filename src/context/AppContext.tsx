@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply, ViewType } from '../types';
+import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply, ViewType, ArchivedStory, ArchivedStoryComment } from '../types';
 import { INITIAL_STORIES, INITIAL_USERS, INITIAL_NOTIFICATIONS, INITIAL_MESSAGES } from '../data/mockData';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, getDoc } from 'firebase/firestore';
@@ -82,6 +82,22 @@ const deleteForumTopicFromFirestore = async (topicId: string) => {
     await deleteDoc(doc(db, 'forumTopics', topicId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, `forumTopics/${topicId}`);
+  }
+};
+
+const syncArchivedStoryToFirestore = async (archiveStory: ArchivedStory) => {
+  try {
+    await setDoc(doc(db, 'archivedStories', archiveStory.id), archiveStory, { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `archivedStories/${archiveStory.id}`);
+  }
+};
+
+const deleteArchivedStoryFromFirestore = async (archiveId: string) => {
+  try {
+    await deleteDoc(doc(db, 'archivedStories', archiveId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `archivedStories/${archiveId}`);
   }
 };
 
@@ -212,6 +228,26 @@ interface AppContextType {
   deleteForumReply: (topicId: string, replyId: string) => void;
   toggleLikeForumTopic: (topicId: string) => void;
   toggleLikeForumReply: (topicId: string, replyId: string) => void;
+
+  // Kayıp & Silinen Eserler Arşivi (PDF Arşivi)
+  archivedStories: ArchivedStory[];
+  addArchivedStory: (storyData: {
+    title: string;
+    originalAuthor: string;
+    chapterCount: string | number;
+    summary: string;
+    category?: Category | string;
+    tags?: string[];
+    pdfUrl: string;
+    pdfFileName?: string;
+    pdfFileSize?: string;
+    coverUrl?: string;
+  }) => Promise<{ success: boolean; id?: string; error?: string }>;
+  deleteArchivedStory: (archiveId: string) => void;
+  toggleLikeArchivedStory: (archiveId: string) => void;
+  addArchivedStoryComment: (archiveId: string, content: string) => void;
+  deleteArchivedStoryComment: (archiveId: string, commentId: string) => void;
+  incrementArchivedStoryDownloads: (archiveId: string) => void;
 
   // Library
   toggleLibraryStory: (storyId: string, status?: 'reading' | 'want_to_read' | 'completed' | 'favorite') => void;
@@ -537,7 +573,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Stories state
-  const [stories, setStories] = useState<Story[]>(() => []);
+  const [stories, setStories] = useState<Story[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}stories`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_STORIES;
+    } catch {
+      return INITIAL_STORIES;
+    }
+  });
 
   useEffect(() => {
     try {
@@ -679,6 +726,143 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return () => unsub();
     } catch (e) {
       console.warn('Firestore forumTopics listener error:', e);
+    }
+  }, []);
+
+  // Initial Sample Archived Stories (Nostalgic lost wattpad and classic stories)
+  const INITIAL_ARCHIVED_STORIES: ArchivedStory[] = [
+    {
+      id: 'arch_1',
+      title: 'Karanlık Lise (Özel Bölümler & Ekler)',
+      originalAuthor: 'Alya Öztürk',
+      chapterCount: '45 Bölüm',
+      summary: 'Platformlardan kaldırılan efsanevi gençlik ve gerilim klasiği Karanlık Lise serisinin özel bölümleri, yazarın nostaljik notları ve final sahneleri bir arada.',
+      category: 'Genç Kurgu',
+      tags: ['KaranlıkLise', 'Nostalji', 'KayıpHikayeler', 'Efsane'],
+      pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      pdfFileName: 'karanlik-lise-ozel-bolumler.pdf',
+      pdfFileSize: '3.4 MB',
+      coverUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=800',
+      addedByUserId: 'system_archivist',
+      addedByUserName: 'WattyBoon Arşiv Ekibi',
+      addedByUserUsername: 'arsiv_kulubu',
+      addedByUserAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=arsivkulubu',
+      addedAt: '2024-01-15',
+      likes: 142,
+      likedBy: [],
+      downloads: 389,
+      comments: [
+        {
+          id: 'arch_c1',
+          userId: 'u_retro1',
+          userName: 'Zeynep Ece',
+          userUsername: 'zeynepece',
+          userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zeynepece',
+          content: 'Yıllardır bu özel sahneleri arıyordum, arşive eklediğiniz için sonsuz teşekkürler!',
+          createdAt: '2024-01-18',
+          likes: 12,
+          likedBy: []
+        }
+      ]
+    },
+    {
+      id: 'arch_2',
+      title: 'Yabancı: Veyl & Şahmeran (Nostaljik İlk Taslak)',
+      originalAuthor: 'Öznur Yıldırım',
+      chapterCount: '52 Bölüm',
+      summary: 'Ediz Çağıran ve Doğa Güngör hikayesinin internette ilk yayınlanan, daha sonra basılı kitap versiyonunda değiştirilen orijinal ham taslak bölümleri.',
+      category: 'Gerilim',
+      tags: ['Yabancı', 'EdizDoğa', 'KayıpTaslak', 'WattyKlasikleri'],
+      pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      pdfFileName: 'yabanci-veyl-sahmeran-ilk-taslak.pdf',
+      pdfFileSize: '4.8 MB',
+      coverUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=800',
+      addedByUserId: 'system_archivist',
+      addedByUserName: 'WattyBoon Arşiv Ekibi',
+      addedByUserUsername: 'arsiv_kulubu',
+      addedByUserAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=arsivkulubu',
+      addedAt: '2024-02-02',
+      likes: 215,
+      likedBy: [],
+      downloads: 620,
+      comments: [
+        {
+          id: 'arch_c2',
+          userId: 'u_retro2',
+          userName: 'Mert Aksoy',
+          userUsername: 'mertaksoy',
+          userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mertaksoy',
+          content: 'Orijinal versiyonunun atmosferi bambaşkaydı. Harika bir arşiv çalışması.',
+          createdAt: '2024-02-05',
+          likes: 19,
+          likedBy: []
+        }
+      ]
+    },
+    {
+      id: 'arch_3',
+      title: 'Sokak Nöbetçileri (Kayıp Özel Sahneler)',
+      originalAuthor: 'Aslı Arslan',
+      chapterCount: '38 Bölüm',
+      summary: 'Nisan ve sokak nöbetçileri ekibinin yayınlanıp sonradan kaldırılan bayram ve yılbaşı özel bölümleri PDF derlemesi.',
+      category: 'Genç Kurgu',
+      tags: ['SokakNöbetçileri', 'ÖzelBölümler', 'AslıArslan', 'PDF'],
+      pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      pdfFileName: 'sokak-nobetculeri-kayip-sahneler.pdf',
+      pdfFileSize: '2.9 MB',
+      coverUrl: 'https://images.unsplash.com/photo-1476275466078-4007374efbbe?auto=format&fit=crop&q=80&w=800',
+      addedByUserId: 'system_archivist',
+      addedByUserName: 'WattyBoon Arşiv Ekibi',
+      addedByUserUsername: 'arsiv_kulubu',
+      addedByUserAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=arsivkulubu',
+      addedAt: '2024-02-14',
+      likes: 188,
+      likedBy: [],
+      downloads: 472,
+      comments: []
+    }
+  ];
+
+  // Archived Stories State (Kayıp & Silinen Eserler Arşivi)
+  const [archivedStories, setArchivedStories] = useState<ArchivedStory[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}archived_stories`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_ARCHIVED_STORIES;
+    } catch {
+      return INITIAL_ARCHIVED_STORIES;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}archived_stories`, JSON.stringify(archivedStories));
+    } catch (e) {
+      console.warn('localStorage setItem archived_stories error:', e);
+    }
+  }, [archivedStories]);
+
+  // Firestore Realtime Archived Stories Listener
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'archivedStories'), (snapshot) => {
+        if (snapshot && !snapshot.empty) {
+          const list: ArchivedStory[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && data.id) list.push(data as ArchivedStory);
+          });
+          if (list.length > 0) {
+            setArchivedStories(list.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()));
+          }
+        }
+      }, (err) => console.warn('Firestore archivedStories snapshot warning:', err));
+      return () => unsub();
+    } catch (e) {
+      console.warn('Firestore archivedStories listener error:', e);
     }
   }, []);
 
@@ -2097,6 +2281,136 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  // Silinen & Kayıp Eserler Arşivi (PDF Arşivi) Actions
+  const addArchivedStory = async (storyData: {
+    title: string;
+    originalAuthor: string;
+    chapterCount: string | number;
+    summary: string;
+    category?: Category | string;
+    tags?: string[];
+    pdfUrl: string;
+    pdfFileName?: string;
+    pdfFileSize?: string;
+    coverUrl?: string;
+  }): Promise<{ success: boolean; id?: string; error?: string }> => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return { success: false, error: 'Hikaye eklemek için lütfen önce giriş yapın.' };
+    }
+    if (!storyData.title.trim()) {
+      return { success: false, error: 'Hikaye adı zorunludur.' };
+    }
+    if (!storyData.originalAuthor.trim()) {
+      return { success: false, error: 'Orijinal yazar adı zorunludur.' };
+    }
+    if (!storyData.pdfUrl) {
+      return { success: false, error: 'PDF dosyası veya bağlantısı eklenmelidir.' };
+    }
+
+    const newArchiveId = 'arch_' + Date.now();
+    const newArchivedStory: ArchivedStory = {
+      id: newArchiveId,
+      title: storyData.title.trim(),
+      originalAuthor: storyData.originalAuthor.trim(),
+      chapterCount: storyData.chapterCount ? String(storyData.chapterCount) : 'Bilinmiyor',
+      summary: storyData.summary.trim() || 'Özet belirtilmemiş.',
+      category: (storyData.category as Category) || 'Genç Kurgu',
+      tags: storyData.tags && storyData.tags.length > 0 ? storyData.tags : ['Arşiv', 'KayıpHikaye'],
+      pdfUrl: storyData.pdfUrl,
+      pdfFileName: storyData.pdfFileName || `${storyData.title.trim().toLowerCase().replace(/\s+/g, '_')}.pdf`,
+      pdfFileSize: storyData.pdfFileSize || '1.5 MB',
+      coverUrl: storyData.coverUrl || 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&q=80&w=800',
+      addedByUserId: currentUser.id,
+      addedByUserName: currentUser.name,
+      addedByUserUsername: currentUser.username,
+      addedByUserAvatar: currentUser.avatar,
+      addedAt: new Date().toISOString().split('T')[0],
+      likes: 0,
+      likedBy: [],
+      downloads: 0,
+      comments: []
+    };
+
+    setArchivedStories((prev) => [newArchivedStory, ...prev]);
+    await syncArchivedStoryToFirestore(newArchivedStory);
+
+    return { success: true, id: newArchiveId };
+  };
+
+  const deleteArchivedStory = (archiveId: string) => {
+    if (!currentUser) return;
+    setArchivedStories((prev) => prev.filter((a) => a.id !== archiveId));
+    deleteArchivedStoryFromFirestore(archiveId);
+  };
+
+  const toggleLikeArchivedStory = (archiveId: string) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setArchivedStories((prev) =>
+      prev.map((a) => {
+        if (a.id !== archiveId) return a;
+        const hasLiked = a.likedBy.includes(currentUser.id);
+        const newLikedBy = hasLiked ? a.likedBy.filter((id) => id !== currentUser.id) : [...a.likedBy, currentUser.id];
+        const updated = { ...a, likedBy: newLikedBy, likes: newLikedBy.length };
+        syncArchivedStoryToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
+  const addArchivedStoryComment = (archiveId: string, content: string) => {
+    if (!currentUser || !content.trim()) {
+      if (!currentUser) setIsAuthModalOpen(true);
+      return;
+    }
+    const newComment: ArchivedStoryComment = {
+      id: 'arch_c_' + Date.now(),
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userUsername: currentUser.username,
+      userAvatar: currentUser.avatar,
+      content: content.trim(),
+      createdAt: new Date().toISOString().split('T')[0],
+      likes: 0,
+      likedBy: []
+    };
+
+    setArchivedStories((prev) =>
+      prev.map((a) => {
+        if (a.id !== archiveId) return a;
+        const updated = { ...a, comments: [...(a.comments || []), newComment] };
+        syncArchivedStoryToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
+  const deleteArchivedStoryComment = (archiveId: string, commentId: string) => {
+    if (!currentUser) return;
+    setArchivedStories((prev) =>
+      prev.map((a) => {
+        if (a.id !== archiveId) return a;
+        const updated = { ...a, comments: (a.comments || []).filter((c) => c.id !== commentId) };
+        syncArchivedStoryToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
+  const incrementArchivedStoryDownloads = (archiveId: string) => {
+    setArchivedStories((prev) =>
+      prev.map((a) => {
+        if (a.id !== archiveId) return a;
+        const updated = { ...a, downloads: (a.downloads || 0) + 1 };
+        syncArchivedStoryToFirestore(updated);
+        return updated;
+      })
+    );
+  };
+
   const incrementStoryReads = (storyId: string, chapterIndex: number) => {
     setStories((prev) =>
       prev.map((s) => {
@@ -2285,6 +2599,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteForumReply,
         toggleLikeForumTopic,
         toggleLikeForumReply,
+
+        archivedStories,
+        addArchivedStory,
+        deleteArchivedStory,
+        toggleLikeArchivedStory,
+        addArchivedStoryComment,
+        deleteArchivedStoryComment,
+        incrementArchivedStoryDownloads,
 
         toggleLibraryStory,
         isStoryInLibrary,

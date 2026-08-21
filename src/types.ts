@@ -203,7 +203,7 @@ export interface ForumTopic {
   id: string;
   title: string;
   content: string;
-  category: 'Genel Sohbet' | 'Hikaye İncelemeleri' | 'Yazarlık Tüyoları' | 'Teoriler & Keşifler' | 'Duyuru & Öneriler';
+  category: 'Genel Sohbet' | 'Hikaye İncelemeleri' | 'Yazarlık Tüyoları' | 'Teoriler & Keşifler' | 'Duyuru & Öneriler' | 'Arşiv & Kayıp Hikayeler';
   authorId: string;
   authorName: string;
   authorUsername: string;
@@ -215,4 +215,40 @@ export interface ForumTopic {
   likedBy: string[];
   replies: ForumReply[];
   isPinned?: boolean;
+}
+
+export interface ArchivedStoryComment {
+  id: string;
+  userId: string;
+  userName: string;
+  userUsername: string;
+  userAvatar: string;
+  userRole?: UserRole;
+  content: string;
+  createdAt: string;
+  likes: number;
+  likedBy: string[];
+}
+
+export interface ArchivedStory {
+  id: string;
+  title: string;
+  originalAuthor: string;
+  chapterCount: string | number;
+  summary: string;
+  category: Category | string;
+  tags?: string[];
+  pdfUrl: string; // Base64 data URL (data:application/pdf;base64,...) or remote PDF link
+  pdfFileName?: string;
+  pdfFileSize?: string;
+  coverUrl?: string;
+  addedByUserId: string;
+  addedByUserName: string;
+  addedByUserUsername: string;
+  addedByUserAvatar: string;
+  addedAt: string;
+  likes: number;
+  likedBy: string[];
+  downloads: number;
+  comments: ArchivedStoryComment[];
 }

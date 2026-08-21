@@ -9,17 +9,26 @@ import {
   Sparkles, 
   Search, 
   Tag, 
-  User as UserIcon, 
   Send, 
   X, 
-  Flame, 
-  Clock, 
   Pin,
-  TrendingUp,
-  Filter,
-  Trash2
+  Trash2,
+  FileText,
+  Download,
+  BookOpen,
+  FolderArchive,
+  UploadCloud,
+  FileUp,
+  CheckCircle2,
+  ExternalLink,
+  Eye,
+  Calendar,
+  User as UserIcon,
+  Layers,
+  BookMarked,
+  Filter
 } from 'lucide-react';
-import { ForumTopic } from '../types';
+import { ForumTopic, ArchivedStory, Category } from '../types';
 
 const FORUM_CATEGORIES = [
   'Tümü',
@@ -28,6 +37,21 @@ const FORUM_CATEGORIES = [
   'Tavsiyeler & İstekler',
   'Yazar Tartışmaları',
   'Duyurular'
+];
+
+const ARCHIVE_CATEGORIES: (Category | 'Tümü')[] = [
+  'Tümü',
+  'Genç Kurgu',
+  'Romantik',
+  'Gerilim',
+  'Fantastik',
+  'Bilim Kurgu',
+  'Gizem',
+  'Dram',
+  'Hayran Kurgu',
+  'Aksiyon',
+  'Mizah',
+  'Genel'
 ];
 
 export const ForumView: React.FC = () => {
@@ -39,22 +63,53 @@ export const ForumView: React.FC = () => {
     deleteForumReply,
     toggleLikeForumTopic, 
     toggleLikeForumReply, 
+    archivedStories,
+    addArchivedStory,
+    deleteArchivedStory,
+    toggleLikeArchivedStory,
+    addArchivedStoryComment,
+    deleteArchivedStoryComment,
+    incrementArchivedStoryDownloads,
     currentUser,
-    openAuthorProfile 
+    openAuthorProfile,
+    setIsAuthModalOpen
   } = useApp();
 
+  // Active top-level sub-section: 'discussions' (Tartışmalar) or 'archive' (Arşiv)
+  const [activeTab, setActiveTab] = useState<'discussions' | 'archive'>('discussions');
+
+  // Discussions State
   const [selectedCategory, setSelectedCategory] = useState<string>('Tümü');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTopic, setActiveTopic] = useState<ForumTopic | null>(null);
   const [isNewTopicModalOpen, setIsNewTopicModalOpen] = useState<boolean>(false);
-
-  // New topic form states
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState('Genel Sohbet');
   const [newContent, setNewContent] = useState('');
-
-  // Active topic reply form state
   const [replyText, setReplyText] = useState('');
+
+  // Archive State
+  const [archiveCategory, setArchiveCategory] = useState<string>('Tümü');
+  const [archiveSearch, setArchiveSearch] = useState<string>('');
+  const [isNewArchiveModalOpen, setIsNewArchiveModalOpen] = useState<boolean>(false);
+  const [selectedPdfStory, setSelectedPdfStory] = useState<ArchivedStory | null>(null);
+  const [selectedCommentsStory, setSelectedCommentsStory] = useState<ArchivedStory | null>(null);
+  const [archiveCommentText, setArchiveCommentText] = useState<string>('');
+
+  // New Archived Story Form State
+  const [archTitle, setArchTitle] = useState('');
+  const [archAuthor, setArchAuthor] = useState('');
+  const [archChapterCount, setArchChapterCount] = useState('');
+  const [archSummary, setArchSummary] = useState('');
+  const [archCategory, setArchCategory] = useState<Category>('Genç Kurgu');
+  const [archTags, setArchTags] = useState('');
+  const [archCoverUrl, setArchCoverUrl] = useState('');
+  const [archPdfUrl, setArchPdfUrl] = useState('');
+  const [archPdfFileName, setArchPdfFileName] = useState('');
+  const [archPdfFileSize, setArchPdfFileSize] = useState('');
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [uploadSuccessMessage, setUploadSuccessMessage] = useState('');
+  const [formError, setFormError] = useState('');
 
   // Filter topics
   const filteredTopics = forumTopics.filter((topic) => {
@@ -68,6 +123,17 @@ export const ForumView: React.FC = () => {
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  // Filter archived stories
+  const filteredArchiveStories = (archivedStories || []).filter((story) => {
+    const matchesCategory = archiveCategory === 'Tümü' || story.category === archiveCategory;
+    const matchesSearch = 
+      story.title.toLowerCase().includes(archiveSearch.toLowerCase()) ||
+      story.originalAuthor.toLowerCase().includes(archiveSearch.toLowerCase()) ||
+      story.summary.toLowerCase().includes(archiveSearch.toLowerCase()) ||
+      (story.tags && story.tags.some(t => t.toLowerCase().includes(archiveSearch.toLowerCase())));
+    return matchesCategory && matchesSearch;
   });
 
   const handleCreateTopic = (e: React.FormEvent) => {
@@ -85,18 +151,119 @@ export const ForumView: React.FC = () => {
     addForumReply(activeTopic.id, replyText.trim());
     setReplyText('');
     
-    // Refresh active topic view from updated state
     const updated = forumTopics.find((t) => t.id === activeTopic.id);
     if (updated) {
       setActiveTopic(updated);
     }
   };
 
-  // Keep active topic in sync with global forumTopics state
+  // PDF File Upload Handler (FileReader -> base64 Data URL)
+  const handlePdfFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      setFormError('Lütfen geçerli bir PDF (.pdf) dosyası seçin.');
+      return;
+    }
+
+    // Calculate human-readable file size
+    const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
+    const sizeStr = `${sizeInMb} MB`;
+
+    setIsUploadingPdf(true);
+    setFormError('');
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setArchPdfUrl(result);
+      setArchPdfFileName(file.name);
+      setArchPdfFileSize(sizeStr);
+      setIsUploadingPdf(false);
+      setUploadSuccessMessage(`"${file.name}" (${sizeStr}) başarıyla yüklendi.`);
+    };
+    reader.onerror = () => {
+      setIsUploadingPdf(false);
+      setFormError('PDF dosyası okunurken bir hata oluştu. Lütfen tekrar deneyin.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCreateArchivedStory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    if (!archTitle.trim()) {
+      setFormError('Lütfen hikaye adını giriniz.');
+      return;
+    }
+    if (!archAuthor.trim()) {
+      setFormError('Lütfen orijinal yazarın adını giriniz.');
+      return;
+    }
+    if (!archPdfUrl) {
+      setFormError('Lütfen bir PDF dosyası yükleyin veya geçerli bir PDF bağlantısı girin.');
+      return;
+    }
+
+    const tagsArray = archTags
+      .split(',')
+      .map((t) => t.trim().replace(/^#/, ''))
+      .filter((t) => t.length > 0);
+
+    const res = await addArchivedStory({
+      title: archTitle.trim(),
+      originalAuthor: archAuthor.trim(),
+      chapterCount: archChapterCount.trim() || 'Bilinmiyor',
+      summary: archSummary.trim(),
+      category: archCategory,
+      tags: tagsArray,
+      pdfUrl: archPdfUrl,
+      pdfFileName: archPdfFileName || `${archTitle.trim().toLowerCase().replace(/\s+/g, '_')}.pdf`,
+      pdfFileSize: archPdfFileSize || '1.8 MB',
+      coverUrl: archCoverUrl.trim() || undefined
+    });
+
+    if (res.success) {
+      // Reset form
+      setArchTitle('');
+      setArchAuthor('');
+      setArchChapterCount('');
+      setArchSummary('');
+      setArchTags('');
+      setArchCoverUrl('');
+      setArchPdfUrl('');
+      setArchPdfFileName('');
+      setArchPdfFileSize('');
+      setUploadSuccessMessage('');
+      setFormError('');
+      setIsNewArchiveModalOpen(false);
+    } else {
+      setFormError(res.error || 'Hikaye arşive eklenirken bir sorun oluştu.');
+    }
+  };
+
+  const handleAddArchiveComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCommentsStory || !archiveCommentText.trim()) return;
+    addArchivedStoryComment(selectedCommentsStory.id, archiveCommentText.trim());
+    setArchiveCommentText('');
+  };
+
+  // Sync active topic and comment stories with global state
   const currentActiveTopic = activeTopic ? forumTopics.find(t => t.id === activeTopic.id) || activeTopic : null;
+  const currentCommentsStory = selectedCommentsStory 
+    ? archivedStories.find(s => s.id === selectedCommentsStory.id) || selectedCommentsStory 
+    : null;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in pb-24 md:pb-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in pb-24 md:pb-12">
       
       {/* Forum Banner Header */}
       <section className="relative rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 p-6 sm:p-8 text-white shadow-xl overflow-hidden">
@@ -107,173 +274,489 @@ export const ForumView: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5" /> Okur & Yazar Kulübü
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-extrabold tracking-tight">
-              Topluluk
+              Topluluk & Eser Arşivi
             </h1>
             <p className="text-xs sm:text-sm text-purple-200/80 leading-relaxed">
-              En sevdiğin serileri tartış, teorilerini paylaş, öneri iste veya diğer okuyucularla tanışıp sohbet et!
+              En sevdiğin serileri tartış, teorilerini paylaş veya kaldırılan & silinen efsane Wattpad klasiklerini PDF olarak arşivde keşfet ve ekle!
             </p>
           </div>
 
-          <button
-            onClick={() => {
-              if (!currentUser) {
-                alert('Konu açabilmek için lütfen giriş yapın.');
-                return;
-              }
-              setIsNewTopicModalOpen(true);
-            }}
-            className="flex-shrink-0 px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> Yeni Konu Başlat
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {activeTab === 'discussions' ? (
+              <button
+                onClick={() => {
+                  if (!currentUser) {
+                    setIsAuthModalOpen(true);
+                    return;
+                  }
+                  setIsNewTopicModalOpen(true);
+                }}
+                className="px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> Yeni Konu Başlat
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (!currentUser) {
+                    setIsAuthModalOpen(true);
+                    return;
+                  }
+                  setIsNewArchiveModalOpen(true);
+                }}
+                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs shadow-lg shadow-orange-900/50 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer animate-pulse"
+              >
+                <FileUp className="w-4 h-4" /> + Arşive PDF Hikaye Ekle
+              </button>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Search and Category Filters */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-        
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
-          {FORUM_CATEGORIES.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                selectedCategory === category
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/50'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+      {/* Main Section Navigation Switcher (Tartışmalar vs Arşiv) */}
+      <div className="flex items-center gap-3 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm max-w-md">
+        <button
+          onClick={() => setActiveTab('discussions')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeTab === 'discussions'
+              ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span>Tartışmalar & Konular</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-semibold">
+            {forumTopics.length}
+          </span>
+        </button>
 
-        {/* Search Input */}
-        <div className="relative min-w-[220px]">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Konularda veya yazarlarda ara..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-purple-500 text-slate-900 dark:text-white focus:outline-none"
-          />
-        </div>
+        <button
+          onClick={() => setActiveTab('archive')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeTab === 'archive'
+              ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <FolderArchive className="w-4 h-4" />
+          <span>Arşiv & Kayıp Eserler</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-600 dark:text-amber-300 font-semibold">
+            PDF ({archivedStories.length})
+          </span>
+        </button>
       </div>
 
-      {/* Forum Topics Grid / List */}
-      <div className="space-y-3">
-        {filteredTopics.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-8 space-y-3">
-            <MessageSquare className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700" />
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-              Henüz konu bulunamadı
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              Seçili kategoride henüz bir başlık yok. İlk konuyu sen başlatıp topluluğu renklendirebilirsin!
-            </p>
+      {/* ========================================================================= */}
+      {/* 1. DISCUSSIONS TAB (Tartışmalar) */}
+      {/* ========================================================================= */}
+      {activeTab === 'discussions' && (
+        <div className="space-y-6">
+          {/* Search and Category Filters */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+            {/* Category Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+              {FORUM_CATEGORIES.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    selectedCategory === category
+                      ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/50'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative min-w-[220px]">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Konularda veya yazarlarda ara..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-purple-500 text-slate-900 dark:text-white focus:outline-none"
+              />
+            </div>
           </div>
-        ) : (
-          filteredTopics.map((topic) => {
-            const isLiked = currentUser ? topic.likedBy.includes(currentUser.id) : false;
 
-            return (
-              <div
-                key={topic.id}
-                onClick={() => setActiveTopic(topic)}
-                className={`p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all duration-200 cursor-pointer hover:shadow-md group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-                  topic.isPinned 
-                    ? 'border-purple-300 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-950/20' 
-                    : 'border-slate-100 dark:border-slate-800 hover:border-purple-200 dark:hover:border-purple-900/60'
-                }`}
-              >
-                <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                  <img
-                    src={topic.authorAvatar}
-                    alt={topic.authorName}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/20 flex-shrink-0 mt-0.5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openAuthorProfile(topic.authorId);
-                    }}
-                  />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {topic.isPinned && (
-                        <span className="px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[10px] flex items-center gap-1">
-                          <Pin className="w-2.5 h-2.5 fill-current" /> Sabitlendi
-                        </span>
-                      )}
-                      <span className="px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold text-[10px]">
-                        {topic.category}
-                      </span>
-                      <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:underline flex items-center gap-1" onClick={(e) => {
-                        e.stopPropagation();
-                        openAuthorProfile(topic.authorId);
-                      }}>
-                        {topic.authorName}
-                        <UserRoleBadge userId={topic.authorId} role={topic.authorRole} />
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        • {new Date(topic.createdAt).toLocaleDateString('tr-TR')}
-                      </span>
-                    </div>
+          {/* Forum Topics Grid / List */}
+          <div className="space-y-3">
+            {filteredTopics.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-8 space-y-3">
+                <MessageSquare className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700" />
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                  Henüz konu bulunamadı
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  Seçili kategoride henüz bir başlık yok. İlk konuyu sen başlatıp topluluğu renklendirebilirsin!
+                </p>
+              </div>
+            ) : (
+              filteredTopics.map((topic) => {
+                const isLiked = currentUser ? topic.likedBy.includes(currentUser.id) : false;
 
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors line-clamp-1">
-                      {topic.title}
-                    </h3>
-
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                      {topic.content}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Topic Stats & Actions */}
-                <div className="flex items-center gap-3 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 text-xs">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLikeForumTopic(topic.id);
-                    }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all ${
-                      isLiked
-                        ? 'bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-rose-300'
+                return (
+                  <div
+                    key={topic.id}
+                    onClick={() => setActiveTopic(topic)}
+                    className={`p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all duration-200 cursor-pointer hover:shadow-md group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                      topic.isPinned 
+                        ? 'border-purple-300 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-950/20' 
+                        : 'border-slate-100 dark:border-slate-800 hover:border-purple-200 dark:hover:border-purple-900/60'
                     }`}
                   >
-                    <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current text-rose-500' : ''}`} />
-                    <span className="font-bold">{topic.likes}</span>
-                  </button>
+                    <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                      <img
+                        src={topic.authorAvatar}
+                        alt={topic.authorName}
+                        className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/20 flex-shrink-0 mt-0.5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAuthorProfile(topic.authorId);
+                        }}
+                      />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {topic.isPinned && (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[10px] flex items-center gap-1">
+                              <Pin className="w-2.5 h-2.5 fill-current" /> Sabitlendi
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold text-[10px]">
+                            {topic.category}
+                          </span>
+                          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:underline flex items-center gap-1" onClick={(e) => {
+                            e.stopPropagation();
+                            openAuthorProfile(topic.authorId);
+                          }}>
+                            {topic.authorName}
+                            <UserRoleBadge userId={topic.authorId} role={topic.authorRole} />
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            • {new Date(topic.createdAt).toLocaleDateString('tr-TR')}
+                          </span>
+                        </div>
 
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold border border-slate-200 dark:border-slate-700">
-                    <MessageCircle className="w-3.5 h-3.5 text-purple-500" />
-                    <span>{topic.replies.length}</span>
+                        <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors line-clamp-1">
+                          {topic.title}
+                        </h3>
+
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                          {topic.content}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Topic Stats & Actions */}
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 text-xs">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleLikeForumTopic(topic.id);
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                          isLiked
+                            ? 'bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-rose-300'
+                        }`}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-current text-rose-500' : ''}`} />
+                        <span className="font-bold">{topic.likes}</span>
+                      </button>
+
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold border border-slate-200 dark:border-slate-700">
+                        <MessageCircle className="w-3.5 h-3.5 text-purple-500" />
+                        <span>{topic.replies.length}</span>
+                      </div>
+
+                      {currentUser && currentUser.id === topic.authorId && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`"${topic.title}" konusunu silmek istediğinize emin misiniz?`)) {
+                              deleteForumTopic(topic.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900 transition-all cursor-pointer"
+                          title="Konuyu Sil"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
-                  {currentUser && currentUser.id === topic.authorId && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`"${topic.title}" konusunu silmek istediğinize emin misiniz?`)) {
-                          deleteForumTopic(topic.id);
-                        }
-                      }}
-                      className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900 transition-all"
-                      title="Konuyu Sil"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
+      {/* ========================================================================= */}
+      {/* 2. ARCHIVE TAB (Kayıp & Silinen Eserler Arşivi) */}
+      {/* ========================================================================= */}
+      {activeTab === 'archive' && (
+        <div className="space-y-6">
+          {/* Archive Info Card */}
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-purple-500/10 border border-amber-300/40 dark:border-amber-700/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20 shrink-0">
+                <FolderArchive className="w-6 h-6" />
               </div>
-            );
-          })
-        )}
-      </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Silinen & Kayıp Eserler Kütüphanesi</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-extrabold">
+                    Topluluk Arşivi
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                  Platformlardan kaldırılan nostaljik ve en sevilen kitapları yaşatıyoruz. Arşivdeki PDF'leri doğrudan indirebilir, tarayıcıda okuyabilir veya kendi arşivindeki PDF'leri hikaye adı, yazar adı, bölüm sayısı ve özetle yükleyerek okurlara ulaştırabilirsin.
+                </p>
+              </div>
+            </div>
 
-      {/* New Topic Modal */}
+            <button
+              onClick={() => {
+                if (!currentUser) {
+                  setIsAuthModalOpen(true);
+                  return;
+                }
+                setIsNewArchiveModalOpen(true);
+              }}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs shadow-lg shadow-orange-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            >
+              <FileUp className="w-4 h-4" /> + Arşive PDF Hikaye Ekle
+            </button>
+          </div>
+
+          {/* Search & Category Filter Bar */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+            {/* Categories */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+              {ARCHIVE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setArchiveCategory(cat)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    archiveCategory === cat
+                      ? 'bg-amber-600 text-white shadow-md shadow-amber-500/20'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative min-w-[240px]">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Arşivde hikaye adı, yazar, özet veya #etiket ara..."
+                value={archiveSearch}
+                onChange={(e) => setArchiveSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-amber-500 text-slate-900 dark:text-white focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Archived Stories Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredArchiveStories.length === 0 ? (
+              <div className="col-span-full text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-8 space-y-3">
+                <FolderArchive className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-700" />
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                  Arşivde henüz eşleşen hikaye bulunamadı
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  Arama kriterlerinizi değiştirebilir veya arşive ilk PDF hikayeyi siz ekleyebilirsiniz!
+                </p>
+                <button
+                  onClick={() => setIsNewArchiveModalOpen(true)}
+                  className="mt-3 px-4 py-2.5 rounded-xl bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 shadow-md transition-all cursor-pointer"
+                >
+                  + Arşive İlk PDF Hikayeyi Ekle
+                </button>
+              </div>
+            ) : (
+              filteredArchiveStories.map((story) => {
+                const isLiked = currentUser ? (story.likedBy || []).includes(currentUser.id) : false;
+                const canDelete = currentUser && (currentUser.id === story.addedByUserId || currentUser.id === 'system_archivist');
+
+                return (
+                  <div
+                    key={story.id}
+                    className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-700/60 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden group"
+                  >
+                    {/* Story Cover Header Banner */}
+                    <div className="relative h-40 bg-slate-800 overflow-hidden">
+                      {story.coverUrl ? (
+                        <img
+                          src={story.coverUrl}
+                          alt={story.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-amber-600 via-orange-700 to-purple-900 flex items-center justify-center p-4">
+                          <BookMarked className="w-12 h-12 text-white/40" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
+                      
+                      {/* Top Badges */}
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                        <span className="px-2.5 py-1 rounded-lg bg-amber-500/90 backdrop-blur-sm text-white font-bold text-[10px] flex items-center gap-1 shadow-sm">
+                          <FileText className="w-3 h-3" /> PDF Arşiv
+                        </span>
+                        <span className="px-2.5 py-1 rounded-lg bg-slate-900/80 backdrop-blur-sm text-amber-300 font-bold text-[10px] border border-amber-500/30">
+                          {story.chapterCount || 'Bölüm Sayısı Belirtilmedi'}
+                        </span>
+                      </div>
+
+                      {/* Title & Author at Bottom of Banner */}
+                      <div className="absolute bottom-3 left-3 right-3 space-y-0.5">
+                        <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">
+                          {story.category}
+                        </span>
+                        <h3 className="text-base font-bold text-white line-clamp-1 group-hover:text-amber-300 transition-colors">
+                          {story.title}
+                        </h3>
+                        <p className="text-xs text-slate-300 font-medium">
+                          Orijinal Yazar: <span className="text-white font-bold">{story.originalAuthor}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Story Body */}
+                    <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                      
+                      {/* Summary */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
+                          {story.summary || 'Özet bulunmuyor.'}
+                        </p>
+
+                        {/* Tags */}
+                        {story.tags && story.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {story.tags.slice(0, 3).map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-medium"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Uploader Member Information */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={story.addedByUserAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${story.addedByUserId}`}
+                            alt={story.addedByUserName || 'Üye'}
+                            className="w-6 h-6 rounded-full object-cover ring-1 ring-amber-500/40"
+                          />
+                          <span className="font-medium truncate max-w-[120px]">
+                            {story.addedByUserName || 'Arşivci'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400">
+                          {story.addedAt}
+                        </span>
+                      </div>
+
+                      {/* Action Buttons: Read PDF, Download, Likes, Comments */}
+                      <div className="space-y-2 pt-1">
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* PDF Oku / Görüntüle */}
+                          <button
+                            onClick={() => setSelectedPdfStory(story)}
+                            className="py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>PDF Oku</span>
+                          </button>
+
+                          {/* PDF İndir */}
+                          <a
+                            href={story.pdfUrl}
+                            download={story.pdfFileName || `${story.title}.pdf`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => incrementArchivedStoryDownloads(story.id)}
+                            className="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>İndir ({story.pdfFileSize || 'PDF'})</span>
+                          </a>
+                        </div>
+
+                        {/* Social Footer */}
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex items-center gap-3">
+                            {/* Like Button */}
+                            <button
+                              onClick={() => toggleLikeArchivedStory(story.id)}
+                              className={`flex items-center gap-1 text-xs font-bold transition-colors cursor-pointer ${
+                                isLiked ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'
+                              }`}
+                            >
+                              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current text-rose-500' : ''}`} />
+                              <span>{story.likes || 0}</span>
+                            </button>
+
+                            {/* Discussion Comments Button */}
+                            <button
+                              onClick={() => setSelectedCommentsStory(story)}
+                              className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-purple-500 transition-colors cursor-pointer"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                              <span>{(story.comments || []).length} Anı / Yorum</span>
+                            </button>
+
+                            {/* Downloads Count */}
+                            <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                              <Download className="w-3 h-3" /> {story.downloads || 0}
+                            </span>
+                          </div>
+
+                          {canDelete && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`"${story.title}" arşiv kaydını silmek istediğinize emin misiniz?`)) {
+                                  deleteArchivedStory(story.id);
+                                }
+                              }}
+                              className="p-1 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors cursor-pointer"
+                              title="Arşivden Sil"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. NEW FORUM TOPIC MODAL */}
+      {/* ========================================================================= */}
       {isNewTopicModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
@@ -283,7 +766,7 @@ export const ForumView: React.FC = () => {
               </h3>
               <button
                 onClick={() => setIsNewTopicModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -312,7 +795,7 @@ export const ForumView: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="Örn: Solo Leveling finali hakkında ne düşünüyorsunuz?"
+                  placeholder="Örn: Solo Leveling finali veya favori karakterleriniz..."
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full p-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -337,13 +820,13 @@ export const ForumView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsNewTopicModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-500/20"
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-500/20 cursor-pointer"
                 >
                   Konuyu Yayınla
                 </button>
@@ -353,7 +836,411 @@ export const ForumView: React.FC = () => {
         </div>
       )}
 
-      {/* Topic Detail View Modal */}
+      {/* ========================================================================= */}
+      {/* 4. NEW ARCHIVE PDF STORY MODAL (Arşive PDF Hikaye Ekle) */}
+      {/* ========================================================================= */}
+      {isNewArchiveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-5 my-8">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500 text-white">
+                  <FileUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Arşive Kayıp / Silinen Hikaye Ekle
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    PDF formatında kaybolan hikayeleri toplulukla paylaşın
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsNewArchiveModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {formError && (
+              <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-300 text-xs font-semibold border border-rose-200 dark:border-rose-900">
+                {formError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateArchivedStory} className="space-y-4">
+              
+              {/* Hikaye Adı & Yazarın Adı */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Hikayenin Adı <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Örn: Karanlık Lise (Özel Bölümler)"
+                    value={archTitle}
+                    onChange={(e) => setArchTitle(e.target.value)}
+                    className="w-full p-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Yazarın Adı <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Örn: Alya Öztürk"
+                    value={archAuthor}
+                    onChange={(e) => setArchAuthor(e.target.value)}
+                    className="w-full p-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Bölüm Sayısı & Kategori */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Bölüm Sayısı <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Örn: 45 Bölüm veya Tamamlandı (38 Bölüm)"
+                    value={archChapterCount}
+                    onChange={(e) => setArchChapterCount(e.target.value)}
+                    className="w-full p-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Edebi Tür / Kategori
+                  </label>
+                  <select
+                    value={archCategory}
+                    onChange={(e) => setArchCategory(e.target.value as Category)}
+                    className="w-full p-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    {ARCHIVE_CATEGORIES.filter(c => c !== 'Tümü').map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Özet */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Hikayenin Özeti & Arşiv Notları <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Hikayenin konusunu, neden silindiğini veya hangi özel bölümleri içerdiğini yazın..."
+                  value={archSummary}
+                  onChange={(e) => setArchSummary(e.target.value)}
+                  className="w-full p-2.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                />
+              </div>
+
+              {/* PDF Dosyası Yükleme (Drag & Drop or Direct Link) */}
+              <div className="space-y-2 p-3.5 rounded-2xl bg-amber-500/5 border-2 border-dashed border-amber-400/50 dark:border-amber-600/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-amber-500" /> PDF Dosyası Yükle <span className="text-rose-500">*</span>
+                  </span>
+                  {isUploadingPdf && (
+                    <span className="text-[11px] text-amber-600 font-semibold animate-pulse">
+                      Yükleniyor...
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <label className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all shrink-0">
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Cihazdan PDF Seç</span>
+                    <input
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      onChange={handlePdfFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <div className="flex-1 w-full text-center sm:text-left">
+                    {uploadSuccessMessage ? (
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center sm:justify-start gap-1">
+                        <CheckCircle2 className="w-4 h-4" /> {uploadSuccessMessage}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Bilgisayarınızdan veya telefonunuzdan PDF dosyasını seçin.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Veya doğrudan PDF Web Bağlantısı */}
+                <div className="pt-2 border-t border-amber-200/40 dark:border-amber-800/40">
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                    Veya PDF Doğrudan İndirme Bağlantısı (URL):
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://ornek-arsiv.com/kitap.pdf"
+                    value={archPdfUrl.startsWith('data:') ? '' : archPdfUrl}
+                    onChange={(e) => {
+                      setArchPdfUrl(e.target.value);
+                      if (e.target.value) {
+                        setArchPdfFileName(`${archTitle.trim() || 'arsiv_hikaye'}.pdf`);
+                        setArchPdfFileSize('2.4 MB');
+                        setUploadSuccessMessage('Harici PDF bağlantısı tanımlandı.');
+                      }
+                    }}
+                    className="w-full p-2 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* İsteğe Bağlı: Kapak Görseli & Etiketler */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                    Kapak Görseli URL (İsteğe Bağlı)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/..."
+                    value={archCoverUrl}
+                    onChange={(e) => setArchCoverUrl(e.target.value)}
+                    className="w-full p-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                    Etiketler (Virgülle ayırın)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="KayıpHikaye, Wattpad, Nostalji"
+                    value={archTags}
+                    onChange={(e) => setArchTags(e.target.value)}
+                    className="w-full p-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Form Buttons */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsNewArchiveModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!archPdfUrl || isUploadingPdf}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-xs shadow-md shadow-orange-500/20 disabled:opacity-50 cursor-pointer"
+                >
+                  Arşive Ekle ve Yayınla
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. IN-APP PDF VIEWER MODAL (PDF Oku) */}
+      {/* ========================================================================= */}
+      {selectedPdfStory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-5xl h-[90vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+            
+            {/* Viewer Header */}
+            <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/80">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
+                    {selectedPdfStory.title}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Orijinal Yazar: <span className="font-bold text-purple-600 dark:text-purple-400">{selectedPdfStory.originalAuthor}</span> • {selectedPdfStory.chapterCount}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedPdfStory.pdfUrl}
+                  download={selectedPdfStory.pdfFileName || `${selectedPdfStory.title}.pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => incrementArchivedStoryDownloads(selectedPdfStory.id)}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">İndir</span>
+                </a>
+
+                <button
+                  onClick={() => setSelectedPdfStory(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  title="Kapat"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Embedded PDF Frame or Fallback */}
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 relative overflow-hidden flex flex-col">
+              <iframe
+                src={selectedPdfStory.pdfUrl}
+                title={selectedPdfStory.title}
+                className="w-full h-full border-none"
+              />
+            </div>
+
+            {/* Viewer Footer */}
+            <div className="px-5 py-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex items-center justify-between text-xs text-slate-500">
+              <span>{selectedPdfStory.summary}</span>
+              <button
+                onClick={() => setSelectedPdfStory(null)}
+                className="text-purple-600 dark:text-purple-400 font-bold hover:underline cursor-pointer"
+              >
+                Pencereyi Kapat
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. ARCHIVE STORY COMMENTS / MEMORIES MODAL */}
+      {/* ========================================================================= */}
+      {currentCommentsStory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl max-h-[85vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="space-y-0.5">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-amber-500" />
+                  <span>{currentCommentsStory.title} - Yorumlar & Anılar</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Orijinal Yazar: {currentCommentsStory.originalAuthor}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setSelectedCommentsStory(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Comments List */}
+            <div className="flex-1 p-6 overflow-y-auto space-y-4">
+              
+              {/* New Comment Input */}
+              {currentUser ? (
+                <form onSubmit={handleAddArchiveComment} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Bu hikaye hakkındaki anılarınızı veya düşüncelerinizi paylaşın..."
+                    value={archiveCommentText}
+                    onChange={(e) => setArchiveCommentText(e.target.value)}
+                    className="flex-1 p-3 text-xs rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!archiveCommentText.trim()}
+                    className="px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Gönder
+                  </button>
+                </form>
+              ) : (
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-xs text-amber-700 dark:text-amber-300 text-center font-medium">
+                  Yorum yazabilmek için lütfen giriş yapın.
+                </div>
+              )}
+
+              {/* List */}
+              <div className="space-y-3 pt-2">
+                {(!currentCommentsStory.comments || currentCommentsStory.comments.length === 0) ? (
+                  <p className="text-xs text-slate-400 text-center py-6">
+                    Bu silinen hikaye için henüz anı veya yorum bırakılmamış. İlk yorumu sen yaz!
+                  </p>
+                ) : (
+                  currentCommentsStory.comments.map((comment) => (
+                    <div key={comment.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80 flex items-start gap-3">
+                      <img
+                        src={comment.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.userId}`}
+                        alt={comment.userName}
+                        className="w-8 h-8 rounded-full object-cover mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            {comment.userName}
+                          </h5>
+                          <span className="text-[10px] text-slate-400">
+                            {comment.createdAt}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                          {comment.content}
+                        </p>
+
+                        {currentUser && (currentUser.id === comment.userId || currentUser.id === currentCommentsStory.addedByUserId) && (
+                          <div className="mt-2 flex justify-end">
+                            <button
+                              onClick={() => deleteArchivedStoryComment(currentCommentsStory.id, comment.id)}
+                              className="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" /> Sil
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 7. TOPIC DETAIL VIEW MODAL */}
+      {/* ========================================================================= */}
       {currentActiveTopic && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-3xl max-h-[85vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
@@ -373,7 +1260,7 @@ export const ForumView: React.FC = () => {
 
               <button
                 onClick={() => setActiveTopic(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -414,7 +1301,7 @@ export const ForumView: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => toggleLikeForumTopic(currentActiveTopic.id)}
-                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         currentUser && currentActiveTopic.likedBy.includes(currentUser.id)
                           ? 'bg-rose-50 dark:bg-rose-950 text-rose-600 border-rose-200'
                           : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
@@ -432,7 +1319,7 @@ export const ForumView: React.FC = () => {
                             setActiveTopic(null);
                           }
                         }}
-                        className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900 transition-all flex items-center gap-1 font-bold text-xs"
+                        className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900 transition-all flex items-center gap-1 font-bold text-xs cursor-pointer"
                         title="Konuyu Sil"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -467,7 +1354,7 @@ export const ForumView: React.FC = () => {
                     <button
                       type="submit"
                       disabled={!replyText.trim()}
-                      className="px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md disabled:opacity-40 flex items-center gap-1.5"
+                      className="px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" /> Gönder
                     </button>
@@ -515,7 +1402,7 @@ export const ForumView: React.FC = () => {
                             <div className="mt-2 flex items-center justify-between">
                               <button
                                 onClick={() => toggleLikeForumReply(currentActiveTopic.id, reply.id)}
-                                className={`flex items-center gap-1 text-[11px] font-semibold transition-colors ${
+                                className={`flex items-center gap-1 text-[11px] font-semibold transition-colors cursor-pointer ${
                                   isReplyLiked ? 'text-rose-500 font-bold' : 'text-slate-400 hover:text-rose-500'
                                 }`}
                               >
@@ -530,7 +1417,7 @@ export const ForumView: React.FC = () => {
                                       deleteForumReply(currentActiveTopic.id, reply.id);
                                     }
                                   }}
-                                  className="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                                  className="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                                   title="Yanıtı Sil"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
