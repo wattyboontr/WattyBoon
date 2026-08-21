@@ -1442,7 +1442,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
           }
         } catch (e) {
-          console.warn('Firestore username lookup error:', e);
+          console.warn('Firestore username lookup notice:', e);
         }
       }
     }
@@ -1453,7 +1453,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const fbUid = userCred.user.uid;
 
         // Find existing user profile in local state or Firestore
-        let found = users.find((u) => u.id === fbUid || u.email?.toLowerCase() === targetEmail);
+        let found = users.find((u) => u.id === fbUid || (u.email && u.email.toLowerCase() === targetEmail));
 
         if (!found) {
           try {
@@ -1462,12 +1462,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               found = userDocSnap.data() as User;
             }
           } catch (e) {
-            console.warn('Firestore getDoc user error:', e);
+            console.warn('Firestore getDoc user notice:', e);
           }
         }
 
         if (found) {
-          const updatedUser: User = { ...found, id: fbUid };
+          const updatedUser: User = { ...found, id: fbUid, email: targetEmail };
           setUsers((prev) => [...prev.filter((u) => u.id !== found!.id && u.id !== fbUid), updatedUser]);
           await syncUserToFirestore(updatedUser);
           setCurrentUserId(fbUid);
@@ -1486,19 +1486,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             joinedDate: new Date().toISOString().split('T')[0],
             library: [],
           };
-          setUsers((prev) => [...prev, newUser]);
+          setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), newUser]);
           await syncUserToFirestore(newUser);
           setCurrentUserId(fbUid);
           setActiveAuthorId(fbUid);
           return { success: true };
         }
       } catch (err: any) {
-        console.warn('Firebase login attempt error (falling back to Firestore user lookup):', err);
+        console.warn('Firebase login attempt notice:', err);
         if (err.code === 'auth/wrong-password') {
           return { success: false, error: 'Girdiğiniz şifre hatalı. Lütfen kontrol ediniz.' };
         }
         if (err.code === 'auth/invalid-credential') {
-          const fallbackUser = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
+          // Check if user exists in state or Firestore
+          let fallbackUser = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
+          if (!fallbackUser) {
+            try {
+              const qSnap = await getDocs(collection(db, 'users'));
+              if (qSnap && !qSnap.empty) {
+                qSnap.forEach((docSnap) => {
+                  const uData = docSnap.data() as User;
+                  if (uData.email?.toLowerCase() === targetEmail || uData.username?.toLowerCase() === inputClean.toLowerCase()) {
+                    fallbackUser = uData;
+                  }
+                });
+              }
+            } catch (fsErr) {
+              console.warn('Firestore fallback user query error:', fsErr);
+            }
+          }
           if (fallbackUser) {
             setCurrentUserId(fallbackUser.id);
             setActiveAuthorId(fallbackUser.id);
@@ -1518,8 +1534,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    // Fallback email/username lookup in Firestore / state
-    const found = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
+    // Direct user lookup in Firestore & local state
+    let found = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
+    if (!found) {
+      try {
+        const qSnap = await getDocs(collection(db, 'users'));
+        if (qSnap && !qSnap.empty) {
+          qSnap.forEach((docSnap) => {
+            const uData = docSnap.data() as User;
+            if (uData.email?.toLowerCase() === targetEmail || uData.username?.toLowerCase() === inputClean.toLowerCase()) {
+              found = uData;
+            }
+          });
+        }
+      } catch (fsErr) {
+        console.warn('Firestore user search error:', fsErr);
+      }
+    }
+
     if (found) {
       setCurrentUserId(found.id);
       setActiveAuthorId(found.id);
@@ -1550,6 +1582,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const existingEmail = users.find((u) => u.email?.toLowerCase() === trimmedEmail);
     if (existingEmail) {
       return { success: false, error: 'Bu e-posta adresi ile kayıtlı bir hesap zaten var. Lütfen Giriş Yap sekmesini kullanın.' };
+    }
+
+    // Check duplicate in Firestore if online
+    try {
+      const qSnap = await getDocs(collection(db, 'users'));
+      if (qSnap && !qSnap.empty) {
+        let duplicateUser = false;
+        let duplicateMail = false;
+        qSnap.forEach((docSnap) => {
+          const u = docSnap.data() as User;
+          if (u.username?.toLowerCase() === cleanUsername.toLowerCase()) duplicateUser = true;
+          if (u.email?.toLowerCase() === trimmedEmail) duplicateMail = true;
+        });
+        if (duplicateUser) return { success: false, error: 'Bu kullanıcı adı başka bir üye tarafından zaten kullanılıyor.' };
+        if (duplicateMail) return { success: false, error: 'Bu e-posta adresi ile kayıtlı bir hesap zaten var. Lütfen Giriş Yap sekmesini kullanın.' };
+      }
+    } catch (e) {
+      console.warn('Firestore duplicate check notice:', e);
     }
 
     let newId = 'user_' + Date.now();
