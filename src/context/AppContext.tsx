@@ -902,6 +902,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       else if (sayfa === 'oku' || sayfa === 'reader') view = 'reader';
       else if (sayfa === 'profil' || sayfa === 'profile') view = 'profile';
       else if (sayfa === 'bildirimler' || sayfa === 'notifications') view = 'notifications';
+      else if (sayfa === 'sitemap' || sayfa === 'site-haritasi' || sayfa === 'harita') view = 'sitemap';
       else if (kategori) view = 'explore';
 
       return {
@@ -1024,6 +1025,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       case 'notifications': {
         url = '?sayfa=bildirimler';
         title = 'WattyBoon | Bildirimler';
+        break;
+      }
+      case 'sitemap': {
+        url = '?sayfa=sitemap';
+        title = 'WattyBoon | Site Haritası & İndeks';
         break;
       }
       default: {
@@ -1435,6 +1441,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (targetId && stories.some((s) => s.id === targetId)) {
       // Update existing
+      const existingStory = stories.find((s) => s.id === targetId);
+      const prevChapterCount = existingStory?.chapters?.length || 0;
+      const newChapters = storyData.chapters || existingStory?.chapters || [];
+      const isNewChapterAdded = newChapters.length > prevChapterCount;
+      const newChapterIndex = newChapters.length - 1;
+      const newChapterTitle = newChapters[newChapterIndex]?.title || `${newChapters.length}. Bölüm`;
+
       setStories((prev) =>
         prev.map((s) => {
           if (s.id === targetId) {
@@ -1445,6 +1458,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return s;
         })
       );
+
+      // Notify readers who have this story saved in their library
+      if (isNewChapterAdded && existingStory) {
+        const readersToNotify = users.filter(
+          (u) =>
+            u.id !== currentUser.id &&
+            (u.library?.some((item) => item.storyId === targetId) ||
+             u.customLists?.some((list) => list.storyIds?.includes(targetId)))
+        );
+
+        readersToNotify.forEach((reader) => {
+          sendNotification({
+            userId: reader.id,
+            actorId: currentUser.id,
+            senderId: currentUser.id,
+            senderName: currentUser.name,
+            senderAvatar: currentUser.avatar,
+            type: 'new_chapter',
+            title: '📖 Yeni Bölüm Yayınlandı!',
+            message: `Kütüphanendeki "${existingStory.title}" adlı esere yeni bir bölüm eklendi: "${newChapterTitle}". Hemen oku!`,
+            storyId: targetId,
+            targetStoryId: targetId,
+            chapterIndex: newChapterIndex,
+            targetChapterIndex: newChapterIndex,
+          });
+        });
+      }
     } else {
       // Create new story (UNLIMITED FOR ALL USERS)
       targetId = 'story_' + Date.now();

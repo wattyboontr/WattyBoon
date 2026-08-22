@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Ana Sayfa -->
+  <url>
+    <loc>https://wattyboon.com/</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Keşfet & Hikaye Arama -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kesfet</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Kategoriler -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategoriler</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Forum & Topluluk Tartışmaları -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=forum</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Hikaye Yaz / Yazar Editörü -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=yaz</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Site Haritası Sayfası -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=sitemap</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Kategori: Romantik -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Romantik</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Kategori: Fantastik -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Fantastik</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Kategori: Bilim Kurgu -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Bilim+Kurgu</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Kategori: Gizem -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Gizem</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Kategori: Korku -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Korku</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Kategori: Macera -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Macera</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Kategori: Gençlik -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Gen%C3%A7lik</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Kategori: Şiir -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=%C5%9Eiir</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Kategori: Tarih -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Tarih</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Kategori: Klasik -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Klasik</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Kategori: Kısa Hikaye -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=K%C4%B1sa+Hikaye</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Kategori: Mizah -->
+  <url>
+    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Mizah</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+</urlset>

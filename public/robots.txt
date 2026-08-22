@@ -1,0 +1,9 @@
+# WattyBoon Robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /?sayfa=admin
+
+# Sitemaps
+Sitemap: https://wattyboon.com/sitemap.xml
+Sitemap: https://wattyboon.com/sitemap

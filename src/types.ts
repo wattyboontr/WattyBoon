@@ -212,6 +212,7 @@ export type ViewType =
   | 'notifications'
   | 'story-detail'
   | 'forum'
+  | 'sitemap'
   | 'admin';
 
 export interface SearchFilters {

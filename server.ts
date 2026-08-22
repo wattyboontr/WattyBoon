@@ -100,6 +100,88 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Dynamic Sitemap XML endpoint for Google Search Console & SEO (supports both /sitemap and /sitemap.xml)
+app.get(['/sitemap', '/sitemap.xml'], (req, res) => {
+  try {
+    const host = req.get('host') || 'wattyboon.com';
+    const protocol = req.protocol === 'http' && !host.includes('localhost') ? 'https' : req.protocol;
+    const baseUrl = `${protocol}://${host}`;
+
+    const staticUrls = [
+      { loc: `${baseUrl}/`, priority: '1.0', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kesfet`, priority: '0.9', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategoriler`, priority: '0.8', changefreq: 'weekly' },
+      { loc: `${baseUrl}/?sayfa=forum`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=yaz`, priority: '0.7', changefreq: 'monthly' },
+      { loc: `${baseUrl}/?sayfa=sitemap`, priority: '0.7', changefreq: 'weekly' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Romantik`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Fantastik`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Bilim+Kurgu`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Gizem`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Korku`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Macera`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Gen%C3%A7lik`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=%C5%9Eiir`, priority: '0.7', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Tarih`, priority: '0.7', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Klasik`, priority: '0.7', changefreq: 'weekly' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=K%C4%B1sa+Hikaye`, priority: '0.7', changefreq: 'daily' },
+      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Mizah`, priority: '0.7', changefreq: 'weekly' },
+    ];
+
+    const allStories = cloudflareStorage.getStories ? cloudflareStorage.getStories() : [];
+    const storyUrls = Array.isArray(allStories)
+      ? allStories
+          .filter((s: any) => s.visibility === 'public')
+          .map((s: any) => ({
+            loc: `${baseUrl}/?sayfa=hikaye&amp;id=${encodeURIComponent(s.id)}`,
+            priority: '0.8',
+            changefreq: 'weekly',
+            lastmod: s.updatedAt ? s.updatedAt.split('T')[0] : new Date().toISOString().split('T')[0],
+          }))
+      : [];
+
+    const today = new Date().toISOString().split('T')[0];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${[...staticUrls, ...storyUrls]
+  .map(
+    (u) => `  <url>
+    <loc>${u.loc}</loc>
+    <lastmod>${(u as any).lastmod || today}</lastmod>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`
+  )
+  .join('\n')}
+</urlset>`;
+
+    res.header('Content-Type', 'application/xml; charset=utf-8');
+    res.header('Cache-Control', 'public, max-age=3600');
+    res.send(xml);
+  } catch (err) {
+    console.error('Sitemap generation error:', err);
+    res.status(500).send('Error generating sitemap');
+  }
+});
+
+// Robots.txt endpoint
+app.get('/robots.txt', (req, res) => {
+  const host = req.get('host') || 'wattyboon.com';
+  const protocol = req.protocol === 'http' && !host.includes('localhost') ? 'https' : req.protocol;
+  const baseUrl = `${protocol}://${host}`;
+
+  const robots = `# WattyBoon Robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /?sayfa=admin
+
+Sitemap: ${baseUrl}/sitemap.xml
+`;
+  res.header('Content-Type', 'text/plain');
+  res.send(robots);
+});
+
 // ==========================================
 // FORMSPREE WEBHOOK
 // ==========================================

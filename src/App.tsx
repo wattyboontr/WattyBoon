@@ -16,6 +16,7 @@ import { MessagesModal } from './components/MessagesModal';
 import { InfoModal, InfoTabType } from './components/InfoModal';
 import { ForumView } from './components/ForumView';
 import { AdminPanelView } from './components/AdminPanelView';
+import { SitemapView } from './components/SitemapView';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { Footer } from './components/Footer';
 import { ShieldAlert } from 'lucide-react';
@@ -133,6 +134,7 @@ const AppContent: React.FC = () => {
         {activeView === 'reader' && <StoryReader />}
         {activeView === 'profile' && <UserProfileView />}
         {activeView === 'admin' && <AdminPanelView />}
+        {activeView === 'sitemap' && <SitemapView />}
         {activeView === 'notifications' && <NotificationDrawer />}
       </main>
 

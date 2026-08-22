@@ -15,8 +15,11 @@ export const NotificationDrawer: React.FC = () => {
 
   const handleNotificationClick = (notif: typeof notifications[0]) => {
     markAsRead(notif.id);
-    if (notif.targetStoryId) {
-      openStoryReader(notif.targetStoryId, notif.targetChapterIndex || 0);
+    const storyId = notif.targetStoryId || notif.storyId;
+    const chapterIdx = notif.targetChapterIndex !== undefined ? notif.targetChapterIndex : (notif.chapterIndex || 0);
+    
+    if (storyId) {
+      openStoryReader(storyId, chapterIdx);
     } else if (notif.targetUserId) {
       openAuthorProfile(notif.targetUserId);
     }

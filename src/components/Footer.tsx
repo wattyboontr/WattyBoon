@@ -131,6 +131,14 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInfoModal }) => {
                   İletişim Formu
                 </button>
               </li>
+              <li>
+                <button 
+                  onClick={() => setActiveView('sitemap')} 
+                  className="hover:text-purple-600 dark:hover:text-purple-300 transition-colors flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300"
+                >
+                  Site Haritası
+                </button>
+              </li>
             </ul>
           </div>
 
