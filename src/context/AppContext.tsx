@@ -62,6 +62,15 @@ import {
 
 export type { ViewType };
 
+export interface ProfileUpdateData {
+  name?: string;
+  username?: string;
+  email?: string;
+  bio?: string;
+  avatar?: string;
+  coverUrl?: string;
+}
+
 interface AppContextType {
   // Theme
   isDarkMode: boolean;
@@ -88,7 +97,14 @@ interface AppContextType {
   deleteAccount: () => Promise<{ success: boolean; message?: string; error?: string }>;
   logout: () => void;
   switchDemoUser: (userId: string) => void;
-  updateProfile: (bio: string, name?: string, avatar?: string, coverUrl?: string) => void;
+  updateProfile: (
+    bioOrData: string | ProfileUpdateData,
+    name?: string,
+    avatar?: string,
+    coverUrl?: string,
+    username?: string,
+    email?: string
+  ) => Promise<{ success: boolean; error?: string; message?: string }>;
 
   // Paragraph Comments (Metinler Arası Yorumlar)
   paragraphComments: ParagraphComment[];
@@ -1297,24 +1313,127 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateProfile = (bio: string, name?: string, avatar?: string, coverUrl?: string) => {
-    if (!currentUser) return;
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === currentUser.id) {
-          const updatedUser = {
-            ...u,
-            bio,
-            name: name !== undefined ? name : u.name,
-            avatar: avatar || u.avatar,
-            coverUrl: coverUrl !== undefined ? coverUrl : u.coverUrl,
+  const updateProfile = async (
+    bioOrData: string | ProfileUpdateData,
+    name?: string,
+    avatar?: string,
+    coverUrl?: string,
+    username?: string,
+    email?: string
+  ): Promise<{ success: boolean; error?: string; message?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: 'Oturum açmış kullanıcı bulunamadı.' };
+    }
+
+    let finalName = currentUser.name;
+    let finalUsername = currentUser.username;
+    let finalEmail = currentUser.email;
+    let finalBio = currentUser.bio;
+    let finalAvatar = currentUser.avatar;
+    let finalCoverUrl = currentUser.coverUrl;
+
+    if (typeof bioOrData === 'object' && bioOrData !== null) {
+      if (bioOrData.name !== undefined) finalName = bioOrData.name.trim();
+      if (bioOrData.username !== undefined) finalUsername = bioOrData.username.trim().replace(/^@/, '');
+      if (bioOrData.email !== undefined) finalEmail = bioOrData.email.trim().toLowerCase();
+      if (bioOrData.bio !== undefined) finalBio = bioOrData.bio;
+      if (bioOrData.avatar !== undefined) finalAvatar = bioOrData.avatar;
+      if (bioOrData.coverUrl !== undefined) finalCoverUrl = bioOrData.coverUrl;
+    } else {
+      if (typeof bioOrData === 'string') finalBio = bioOrData;
+      if (name !== undefined) finalName = name.trim();
+      if (avatar !== undefined && avatar.trim()) finalAvatar = avatar.trim();
+      if (coverUrl !== undefined) finalCoverUrl = coverUrl;
+      if (username !== undefined) finalUsername = username.trim().replace(/^@/, '');
+      if (email !== undefined) finalEmail = email.trim().toLowerCase();
+    }
+
+    if (!finalName) {
+      return { success: false, error: 'Ad Soyad alanı boş bırakılamaz.' };
+    }
+
+    if (!finalUsername || finalUsername.length < 3) {
+      return { success: false, error: 'Kullanıcı adı en az 3 karakter olmalıdır.' };
+    }
+
+    // Clean username characters
+    finalUsername = finalUsername.replace(/[^a-zA-Z0-9_.]/g, '');
+
+    // Check username uniqueness among other users
+    const usernameTaken = users.some(
+      (u) => u.id !== currentUser.id && u.username?.toLowerCase() === finalUsername.toLowerCase()
+    );
+    if (usernameTaken) {
+      return { success: false, error: `@${finalUsername} kullanıcı adı başka bir üye tarafından kullanılıyor.` };
+    }
+
+    // Check email format & uniqueness
+    if (finalEmail) {
+      if (!finalEmail.includes('@') || !finalEmail.includes('.')) {
+        return { success: false, error: 'Lütfen geçerli bir e-posta adresi giriniz.' };
+      }
+      const emailTaken = users.some(
+        (u) => u.id !== currentUser.id && u.email?.toLowerCase() === finalEmail.toLowerCase()
+      );
+      if (emailTaken) {
+        return { success: false, error: `${finalEmail} e-posta adresi başka bir hesaba kayıtlı.` };
+      }
+    }
+
+    const updatedUser: User = {
+      ...currentUser,
+      name: finalName,
+      username: finalUsername,
+      email: finalEmail || currentUser.email,
+      bio: finalBio,
+      avatar: finalAvatar || currentUser.avatar,
+      coverUrl: finalCoverUrl !== undefined ? finalCoverUrl : currentUser.coverUrl,
+    };
+
+    // Update users state
+    setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updatedUser : u)));
+
+    // Propagate author updates to stories
+    setStories((prev) =>
+      prev.map((s) => {
+        if (s.authorId === currentUser.id) {
+          const updated = {
+            ...s,
+            authorName: finalName,
+            authorUsername: finalUsername,
+            authorAvatar: finalAvatar || s.authorAvatar,
           };
-          saveUserToCloudflare(updatedUser);
-          return updatedUser;
+          saveStoryToCloudflare(updated).catch(() => {});
+          return updated;
         }
-        return u;
+        return s;
       })
     );
+
+    // Propagate author updates to forum topics
+    setForumTopics((prev) =>
+      prev.map((t) => {
+        if (t.authorId === currentUser.id) {
+          const updated = {
+            ...t,
+            authorName: finalName,
+            authorUsername: finalUsername,
+            authorAvatar: finalAvatar || t.authorAvatar,
+          };
+          saveForumTopicToCloudflare(updated).catch(() => {});
+          return updated;
+        }
+        return t;
+      })
+    );
+
+    // Save to Cloudflare storage
+    await saveUserToCloudflare(updatedUser);
+
+    return {
+      success: true,
+      message: 'Profil ve hesap bilgileriniz başarıyla güncellendi.',
+    };
   };
 
   // ==========================================
