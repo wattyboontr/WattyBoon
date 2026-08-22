@@ -1,6 +1,4 @@
-// Comments Backup & Cloud Storage Engine (Cloudflare KV / D1 Compatible Sync)
-import { db } from './firebase';
-import { collection, doc, setDoc, getDocs, query, where, deleteDoc } from 'firebase/firestore';
+// Comments Backup & Cloud Storage Engine (Cloudflare KV / D1 / LocalStorage Compatible Sync)
 
 export interface StoryCommentRow {
   id: string;
@@ -52,7 +50,7 @@ async function backupToCloud(action: 'upsert' | 'delete', payload: any) {
 }
 
 /**
- * Fetch comments for a story chapter from persistent storage (Firestore + Cloudflare cache).
+ * Fetch comments for a story chapter from persistent storage (LocalStorage + Cloudflare cache).
  */
 export async function fetchComments(
   storyId: string,
@@ -71,39 +69,30 @@ export async function fetchComments(
     console.warn('Comments local cache read notice:', e);
   }
 
-  // 2. Fetch from Firestore
+  // 2. Fetch from Cloudflare Worker backup if available
   try {
-    const commentsRef = collection(db, 'storyComments');
-    const q = query(
-      commentsRef,
-      where('story_id', '==', storyId),
-      where('chapter_index', '==', chapterIndex)
-    );
-    const snap = await getDocs(q);
-
-    if (!snap.empty) {
-      const serverList: StoryCommentRow[] = [];
-      snap.forEach((d) => {
-        serverList.push(d.data() as StoryCommentRow);
-      });
-
-      // Sort newest first
-      serverList.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      // Save to local cache
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(serverList));
-      } catch (err) {
-        console.warn('Cache write notice:', err);
+    if (typeof window !== 'undefined' && 'fetch' in window) {
+      const res = await fetch(`${CLOUDFLARE_BACKUP_ENDPOINT}/api/comments?story_id=${encodeURIComponent(storyId)}&chapter_index=${chapterIndex}`).catch(() => null);
+      if (res && res.ok) {
+        const cloudData = await res.json().catch(() => null);
+        if (Array.isArray(cloudData) && cloudData.length > 0) {
+          const mergedMap = new Map<string, StoryCommentRow>();
+          localComments.forEach((c) => mergedMap.set(c.id, c));
+          cloudData.forEach((c) => mergedMap.set(c.id, c));
+          const mergedList = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(mergedList));
+          } catch {}
+          return mergedList;
+        }
       }
-
-      return serverList;
     }
   } catch (err) {
-    console.warn('Fetch comments firestore notice:', err);
+    console.warn('Cloudflare comments fetch notice:', err);
   }
 
-  // Fallback to local cache if Firestore is empty or offline
   return localComments.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
@@ -194,17 +183,10 @@ export async function insertComment(payload: {
     console.warn('Cache update notice:', e);
   }
 
-  // 2. Persist to Firestore
-  try {
-    await setDoc(doc(db, 'storyComments', commentId), newRow, { merge: true });
-  } catch (err) {
-    console.warn('Firestore setDoc comment notice:', err);
-  }
-
-  // 3. Backup to Cloudflare storage asynchronously
+  // 2. Backup to Cloudflare storage asynchronously
   backupToCloud('upsert', newRow);
 
-  // 4. Send email notification to wattyboontr@gmail.com
+  // 3. Send email notification to wattyboontr@gmail.com
   sendCommentNotification({
     storyId: payload.storyId,
     storyTitle: payload.storyTitle,
@@ -258,22 +240,7 @@ export async function toggleLikeComment(
     }
   }
 
-  // 2. Persist to Firestore
-  try {
-    await setDoc(
-      doc(db, 'storyComments', commentId),
-      {
-        liked_by: updatedLikedBy,
-        likes_count: newCount,
-        updated_at: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-  } catch (err) {
-    console.warn('Firestore update like notice:', err);
-  }
-
-  // 3. Backup update to cloud
+  // 2. Backup update to cloud
   backupToCloud('upsert', { id: commentId, liked_by: updatedLikedBy, likes_count: newCount });
 
   return true;
@@ -302,14 +269,7 @@ export async function deleteComment(
     }
   }
 
-  // 2. Delete from Firestore
-  try {
-    await deleteDoc(doc(db, 'storyComments', commentId));
-  } catch (err) {
-    console.warn('Firestore delete comment notice:', err);
-  }
-
-  // 3. Delete from cloud backup
+  // 2. Delete from cloud backup
   backupToCloud('delete', { id: commentId });
 
   return true;
