@@ -1,0 +1,27 @@
+[
+  {
+    "id": "google_1787408187017_bbc17a75",
+    "name": "Sema",
+    "username": "semajim30942",
+    "email": "semajim30@gmail.com",
+    "role": "admin",
+    "isPro": true,
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=semajim30@gmail.com",
+    "bio": "WattyBoon yazarı ve okuru ✨",
+    "joinedDate": "2026-08-22",
+    "storiesCount": 0,
+    "followersCount": 0,
+    "followingCount": 0,
+    "followers": [],
+    "following": [],
+    "library": [],
+    "readingProgress": [],
+    "savedStories": [],
+    "bookmarks": [],
+    "customLists": [],
+    "emailVerified": true,
+    "authProvider": "google",
+    "createdAt": "2026-08-22T14:16:27.018Z",
+    "updatedAt": "2026-08-22T14:16:27.018Z"
+  }
+]

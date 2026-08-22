@@ -50,7 +50,8 @@ export const LibraryView: React.FC = () => {
   }
 
   // Filter user's library items
-  const userLibraryMap = new Map<string, typeof currentUser.library[0]>(currentUser.library.map((item) => [item.storyId, item]));
+  const userLib = Array.isArray(currentUser.library) ? currentUser.library : [];
+  const userLibraryMap = new Map<string, typeof userLib[0]>(userLib.map((item) => [item.storyId, item]));
 
   const readingStories = stories.filter((s) => userLibraryMap.get(s.id)?.status === 'reading');
   const favoriteStories = stories.filter((s) => userLibraryMap.get(s.id)?.status === 'favorite' || s.likedBy.includes(currentUser.id));

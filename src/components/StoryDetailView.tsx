@@ -29,10 +29,13 @@ import {
   Medal,
   Award,
   TrendingUp,
-  Hash
+  Hash,
+  ShieldAlert,
+  Flag
 } from 'lucide-react';
 import { AddToCustomListModal } from './AddToCustomListModal';
 import { StoryCommentsSection } from './StoryCommentsSection';
+import { StoryReportModal } from './StoryReportModal';
 import { Story } from '../types';
 
 export const StoryDetailView: React.FC = () => {
@@ -64,6 +67,7 @@ export const StoryDetailView: React.FC = () => {
 
   const [commentText, setCommentText] = useState('');
   const [isCustomListModalOpen, setIsCustomListModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const story = stories.find((s) => s.id === activeStoryId);
 
@@ -145,7 +149,7 @@ export const StoryDetailView: React.FC = () => {
   const isSaved = isStoryInLibrary(story.id);
   const isLiked = currentUser ? story.likedBy.includes(currentUser.id) : false;
   const isAuthor = currentUser?.id === story.authorId;
-  const isFollowingAuthor = currentUser ? currentUser.following.includes(story.authorId) : false;
+  const isFollowingAuthor = currentUser && Array.isArray(currentUser.following) ? currentUser.following.includes(story.authorId) : false;
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -472,6 +476,17 @@ export const StoryDetailView: React.FC = () => {
                 <Share2 className="w-4 h-4" />
               </button>
 
+              {!isAuthor && (
+                <button
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="py-3 px-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:border-rose-300 font-bold text-xs transition-all flex items-center gap-1.5"
+                  title="Çalıntı veya uygunsuz içerik şikayet et"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  <span className="hidden sm:inline">Rapor Et</span>
+                </button>
+              )}
+
               {isAuthor && (
                 <>
                   <button
@@ -654,6 +669,12 @@ export const StoryDetailView: React.FC = () => {
         story={story}
         isOpen={isCustomListModalOpen}
         onClose={() => setIsCustomListModalOpen(false)}
+      />
+
+      <StoryReportModal
+        story={story}
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
       />
 
     </div>

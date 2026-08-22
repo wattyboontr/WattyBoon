@@ -98,6 +98,38 @@ export interface CustomList {
   isPrivate?: boolean;
 }
 
+export type ReportReason = 
+  | 'copyright_theft' // Çalıntı / Telif Hakkı İhlali
+  | 'inappropriate_content' // Uygunsuz / Müstehcen İçerik
+  | 'hate_harassment' // Nefret Söylemi / Zorbalık
+  | 'spam_misleading' // Spam veya Yanıltıcı İçerik
+  | 'other'; // Diğer
+
+export type ReportStatus = 'pending' | 'resolved' | 'dismissed';
+
+export interface StoryReport {
+  id: string;
+  storyId: string;
+  storyTitle: string;
+  storyCoverUrl?: string;
+  authorId: string;
+  authorName: string;
+  authorUsername?: string;
+  reporterId: string;
+  reporterName: string;
+  reporterUsername: string;
+  reporterEmail?: string;
+  reason: ReportReason;
+  reasonTitle: string;
+  description: string;
+  originalSourceUrl?: string; // Stolen original story link / proof
+  status: ReportStatus;
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  resolutionNote?: string;
+}
+
 export interface DirectMessage {
   id: string;
   senderId: string;
@@ -156,11 +188,14 @@ export interface AppNotification {
   senderId?: string;
   senderName?: string;
   senderAvatar?: string;
+  actorId?: string;
   type: NotificationType;
   title: string;
   message: string;
   targetStoryId?: string;
+  storyId?: string;
   targetChapterIndex?: number;
+  chapterIndex?: number;
   targetUserId?: string;
   isRead: boolean;
   createdAt: string;
@@ -176,7 +211,8 @@ export type ViewType =
   | 'reader'
   | 'notifications'
   | 'story-detail'
-  | 'forum';
+  | 'forum'
+  | 'admin';
 
 export interface SearchFilters {
   query: string;
@@ -188,6 +224,7 @@ export interface SearchFilters {
 
 export interface ForumReply {
   id: string;
+  topicId?: string;
   userId: string;
   userName: string;
   userUsername: string;
@@ -215,10 +252,12 @@ export interface ForumTopic {
   likedBy: string[];
   replies: ForumReply[];
   isPinned?: boolean;
+  views?: number;
 }
 
 export interface ArchivedStoryComment {
   id: string;
+  archiveId?: string;
   userId: string;
   userName: string;
   userUsername: string;
@@ -250,5 +289,6 @@ export interface ArchivedStory {
   likes: number;
   likedBy: string[];
   downloads: number;
+  downloadsCount?: number;
   comments: ArchivedStoryComment[];
 }

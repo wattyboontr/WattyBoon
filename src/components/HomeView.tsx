@@ -73,8 +73,10 @@ export const HomeView: React.FC = () => {
 
   // Stories to Continue Reading (Okumaya Devam Et)
   const continueReadingList = useMemo(() => {
-    if (!currentUser || !currentUser.readingProgress) return [];
-    return currentUser.readingProgress
+    if (!currentUser) return [];
+    const progressList = Array.isArray(currentUser.readingProgress) ? currentUser.readingProgress : [];
+    if (!progressList.length) return [];
+    return progressList
       .map((progress) => {
         const story = stories.find((s) => s.id === progress.storyId);
         if (!story) return null;
@@ -111,13 +113,15 @@ export const HomeView: React.FC = () => {
     
     const categoryWeights: Record<string, number> = {};
     if (currentUser) {
-      currentUser.library?.forEach((item) => {
+      const userLib = Array.isArray(currentUser.library) ? currentUser.library : [];
+      userLib.forEach((item) => {
         const s = stories.find((st) => st.id === item.storyId);
         if (s?.category) {
           categoryWeights[s.category] = (categoryWeights[s.category] || 0) + 3;
         }
       });
-      currentUser.readingProgress?.forEach((item) => {
+      const userProg = Array.isArray(currentUser.readingProgress) ? currentUser.readingProgress : [];
+      userProg.forEach((item) => {
         const s = stories.find((st) => st.id === item.storyId);
         if (s?.category) {
           categoryWeights[s.category] = (categoryWeights[s.category] || 0) + 2;

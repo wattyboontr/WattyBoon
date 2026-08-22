@@ -1,181 +1,64 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Story, User, AppNotification, Category, Visibility, DirectMessage, CustomList, ReadingProgress, ParagraphComment, Comment, ForumTopic, ForumReply, ViewType, ArchivedStory, ArchivedStoryComment } from '../types';
-import { INITIAL_STORIES, INITIAL_USERS, INITIAL_NOTIFICATIONS, INITIAL_MESSAGES } from '../data/mockData';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, getDoc } from 'firebase/firestore';
 import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  sendPasswordResetEmail, 
-  updatePassword, 
-  updateProfile as updateAuthProfile,
-  deleteUser, 
-  signOut,
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  setPersistence,
-  browserLocalPersistence,
-  inMemoryPersistence
-} from 'firebase/auth';
+  Story, 
+  User, 
+  UserRole,
+  AppNotification, 
+  Category, 
+  Visibility, 
+  DirectMessage, 
+  CustomList, 
+  ReadingProgress, 
+  ParagraphComment, 
+  Comment, 
+  ForumTopic, 
+  ForumReply, 
+  ViewType, 
+  ArchivedStory, 
+  ArchivedStoryComment,
+  StoryReport,
+  ReportReason,
+  ReportStatus
+} from '../types';
+import { 
+  INITIAL_STORIES, 
+  INITIAL_USERS, 
+  INITIAL_NOTIFICATIONS, 
+  INITIAL_MESSAGES 
+} from '../data/mockData';
 import {
+  authLogin,
+  authRegister,
+  authGoogleLogin,
+  authGetMe,
+  authLogout,
+  authResetPassword,
+  fetchUsersFromCloudflare,
+  saveUserToCloudflare,
+  deleteUserFromCloudflare,
   fetchStoriesFromCloudflare,
   saveStoryToCloudflare,
-  bulkSaveStoriesToCloudflare,
   deleteStoryFromCloudflare,
   fetchForumTopicsFromCloudflare,
   saveForumTopicToCloudflare,
-  bulkSaveForumTopicsToCloudflare,
   deleteForumTopicFromCloudflare,
   fetchParagraphCommentsFromCloudflare,
   saveParagraphCommentToCloudflare,
   deleteParagraphCommentFromCloudflare,
+  fetchCommentsFromCloudflare,
+  saveCommentToCloudflare,
+  fetchNotificationsFromCloudflare,
+  saveNotificationToCloudflare,
+  fetchMessagesFromCloudflare,
+  saveMessageToCloudflare,
+  fetchReportsFromCloudflare,
+  saveReportToCloudflare,
+  deleteReportFromCloudflare,
+  sendCommentEmailNotification,
+  sendMessageEmailNotification,
+  clearAllStoriesFromCloudflare,
   CLOUDFLARE_STORAGE_ACCOUNT,
 } from '../lib/cloudflare';
-
-// Firestore Async Persistence Helpers (Users, Notifications, Messages, and Archive)
-const syncUserToFirestore = async (user: User) => {
-  try {
-    await setDoc(doc(db, 'users', user.id), user, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `users/${user.id}`);
-  }
-};
-
-// Cloudflare Storage Helpers (Stories & Chapters - wattyboontr@gmail.com)
-const syncStoryToFirestore = async (story: Story) => {
-  try {
-    await saveStoryToCloudflare(story);
-  } catch (err) {
-    console.warn('[Cloudflare Storage] Story sync error:', err);
-  }
-};
-
-const deleteStoryFromFirestore = async (storyId: string) => {
-  try {
-    await deleteStoryFromCloudflare(storyId);
-  } catch (err) {
-    console.warn('[Cloudflare Storage] Story deletion error:', err);
-  }
-};
-
-const syncNotificationToFirestore = async (notif: AppNotification) => {
-  try {
-    await setDoc(doc(db, 'notifications', notif.id), notif, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `notifications/${notif.id}`);
-  }
-};
-
-const syncMessageToFirestore = async (msg: DirectMessage) => {
-  try {
-    await setDoc(doc(db, 'messages', msg.id), msg, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `messages/${msg.id}`);
-  }
-};
-
-// Cloudflare Storage Helpers (Paragraph Comments - wattyboontr@gmail.com)
-const syncParagraphCommentToFirestore = async (pcomm: ParagraphComment) => {
-  try {
-    await saveParagraphCommentToCloudflare(pcomm);
-  } catch (err) {
-    console.warn('[Cloudflare Storage] Paragraph comment sync error:', err);
-  }
-};
-
-const deleteParagraphCommentFromFirestore = async (commentId: string) => {
-  try {
-    await deleteParagraphCommentFromCloudflare(commentId);
-  } catch (err) {
-    console.warn('[Cloudflare Storage] Paragraph comment deletion error:', err);
-  }
-};
-
-// Cloudflare Storage Helpers (Forum Discussions - wattyboontr@gmail.com)
-const syncForumTopicToFirestore = async (topic: ForumTopic) => {
-  try {
-    await saveForumTopicToCloudflare(topic);
-  } catch (err) {
-    console.warn('[Cloudflare Storage] Forum topic sync error:', err);
-  }
-};
-
-const deleteForumTopicFromFirestore = async (topicId: string) => {
-  try {
-    await deleteForumTopicFromCloudflare(topicId);
-  } catch (err) {
-    console.warn('[Cloudflare Storage] Forum topic deletion error:', err);
-  }
-};
-
-// Firestore Async Persistence Helpers (Kayıp ve Silinen Eserler Arşivi - Firebase)
-const syncArchivedStoryToFirestore = async (archiveStory: ArchivedStory) => {
-  try {
-    await setDoc(doc(db, 'archivedStories', archiveStory.id), archiveStory, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `archivedStories/${archiveStory.id}`);
-  }
-};
-
-const deleteArchivedStoryFromFirestore = async (archiveId: string) => {
-  try {
-    await deleteDoc(doc(db, 'archivedStories', archiveId));
-  } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, `archivedStories/${archiveId}`);
-  }
-};
-
-const INITIAL_FORUM_TOPICS: ForumTopic[] = [];
-
-const toggleLikeCommentInList = (comments: Comment[], commentId: string, userId: string): Comment[] => {
-  return comments.map((c) => {
-    if (c.id === commentId) {
-      const hasLiked = c.likedBy.includes(userId);
-      const newLikedBy = hasLiked ? c.likedBy.filter((id) => id !== userId) : [...c.likedBy, userId];
-      return {
-        ...c,
-        likedBy: newLikedBy,
-        likes: newLikedBy.length
-      };
-    }
-    if (c.replies && c.replies.length > 0) {
-      return {
-        ...c,
-        replies: toggleLikeCommentInList(c.replies, commentId, userId)
-      };
-    }
-    return c;
-  });
-};
-
-const addReplyToCommentInList = (comments: Comment[], parentCommentId: string, newReply: Comment): Comment[] => {
-  return comments.map((c) => {
-    if (c.id === parentCommentId) {
-      return {
-        ...c,
-        replies: [...(c.replies || []), newReply]
-      };
-    }
-    if (c.replies && c.replies.length > 0) {
-      return {
-        ...c,
-        replies: addReplyToCommentInList(c.replies, parentCommentId, newReply)
-      };
-    }
-    return c;
-  });
-};
-
-const deleteCommentFromList = (comments: Comment[], commentId: string): Comment[] => {
-  return comments
-    .filter((c) => c.id !== commentId)
-    .map((c) => ({
-      ...c,
-      replies: c.replies ? deleteCommentFromList(c.replies, commentId) : []
-    }));
-};
 
 export type { ViewType };
 
@@ -299,6 +182,33 @@ interface AppContextType {
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
 
+  // Content Reporting & Moderation
+  reports: StoryReport[];
+  submitStoryReport: (reportData: {
+    storyId: string;
+    storyTitle: string;
+    storyCoverUrl?: string;
+    authorId: string;
+    authorName: string;
+    authorUsername?: string;
+    reason: ReportReason;
+    reasonTitle: string;
+    description: string;
+    originalSourceUrl?: string;
+  }) => Promise<{ success: boolean; message: string }>;
+  adminResolveReport: (reportId: string, status: ReportStatus, note?: string, deleteReportedStory?: boolean) => Promise<boolean>;
+  adminDeleteReport: (reportId: string) => Promise<boolean>;
+
+  // Admin & Moderation Controls
+  isAdmin: boolean;
+  updateUserRole: (targetUserId: string, newRole: UserRole) => void;
+  adminDeleteUser: (targetUserId: string, reason?: string) => { success: boolean; error?: string };
+  adminDeleteStory: (storyId: string, reason?: string) => void;
+  adminDeleteForumTopic: (topicId: string, reason?: string) => void;
+  adminDeleteForumReply: (topicId: string, replyId: string, reason?: string) => void;
+  adminDeleteComment: (storyId: string, commentId: string, reason?: string) => void;
+  adminTogglePinForumTopic: (topicId: string) => void;
+
   // Modals & Settings Auto-Open
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
@@ -308,13 +218,61 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_PREFIX = 'wattyboon_v4_';
+const LOCAL_STORAGE_PREFIX = 'wattyboon_v5_';
+
+const toggleLikeCommentInList = (comments: Comment[], commentId: string, userId: string): Comment[] => {
+  return comments.map((c) => {
+    if (c.id === commentId) {
+      const hasLiked = c.likedBy.includes(userId);
+      const newLikedBy = hasLiked ? c.likedBy.filter((id) => id !== userId) : [...c.likedBy, userId];
+      return {
+        ...c,
+        likedBy: newLikedBy,
+        likes: newLikedBy.length,
+      };
+    }
+    if (c.replies && c.replies.length > 0) {
+      return {
+        ...c,
+        replies: toggleLikeCommentInList(c.replies, commentId, userId),
+      };
+    }
+    return c;
+  });
+};
+
+const addReplyToCommentInList = (comments: Comment[], parentCommentId: string, newReply: Comment): Comment[] => {
+  return comments.map((c) => {
+    if (c.id === parentCommentId) {
+      return {
+        ...c,
+        replies: [...(c.replies || []), newReply],
+      };
+    }
+    if (c.replies && c.replies.length > 0) {
+      return {
+        ...c,
+        replies: addReplyToCommentInList(c.replies, parentCommentId, newReply),
+      };
+    }
+    return c;
+  });
+};
+
+const deleteCommentFromList = (comments: Comment[], commentId: string): Comment[] => {
+  return comments
+    .filter((c) => c.id !== commentId)
+    .map((c) => ({
+      ...c,
+      replies: c.replies ? deleteCommentFromList(c.replies, commentId) : [],
+    }));
+};
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}dark_mode`);
-    return saved ? JSON.parse(saved) : false; // Default to daytime (light) mode
+    return saved ? JSON.parse(saved) : false;
   });
 
   useEffect(() => {
@@ -346,7 +304,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<Category | 'Tümü'>('Tümü');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | undefined>(undefined);
 
-  // Banned / Deleted Users List
+  // Banned User filter
   const BANNED_USERNAMES = ['semajim22', 'semantev7'];
   const isBannedUser = (u: Partial<User> | null | undefined): boolean => {
     if (!u) return false;
@@ -354,18 +312,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return BANNED_USERNAMES.includes(cleanUName);
   };
 
+  const normalizeUser = (u: any): User => {
+    if (!u) return u;
+    let readingProgress: ReadingProgress[] = [];
+    if (Array.isArray(u.readingProgress)) {
+      readingProgress = u.readingProgress;
+    } else if (u.readingProgress && typeof u.readingProgress === 'object') {
+      readingProgress = Object.entries(u.readingProgress).map(([storyId, val]: [string, any]) => {
+        if (val && typeof val === 'object') {
+          return {
+            storyId: val.storyId || storyId,
+            lastChapterIndex: typeof val.lastChapterIndex === 'number' ? val.lastChapterIndex : 0,
+            updatedAt: val.updatedAt || new Date().toISOString(),
+          };
+        }
+        return {
+          storyId,
+          lastChapterIndex: typeof val === 'number' ? val : 0,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+    }
+
+    const isSuperAdmin = u.email?.toLowerCase() === 'semajim30@gmail.com' || u.email?.toLowerCase() === 'wattyboontr@gmail.com';
+    const role: UserRole = isSuperAdmin ? 'admin' : (u.role || 'user');
+
+    return {
+      ...u,
+      role,
+      readingProgress,
+      library: Array.isArray(u.library) ? u.library : [],
+      customLists: Array.isArray(u.customLists) ? u.customLists : [],
+      followers: Array.isArray(u.followers) ? u.followers : [],
+      following: Array.isArray(u.following) ? u.following : [],
+      savedStories: Array.isArray(u.savedStories) ? u.savedStories : [],
+      bookmarks: Array.isArray(u.bookmarks) ? u.bookmarks : [],
+    };
+  };
+
   // Users state
   const [users, setUsers] = useState<User[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}users`);
       const parsed: User[] = saved ? JSON.parse(saved) : INITIAL_USERS;
-      return parsed.filter((u) => !isBannedUser(u));
+      return parsed.map(normalizeUser).filter((u) => !isBannedUser(u));
     } catch {
-      return INITIAL_USERS;
+      return INITIAL_USERS.map(normalizeUser);
     }
   });
 
-  // Current logged in user (Default to empty/guest)
+  // Current logged in user
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
@@ -376,17 +372,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const currentUser = currentUserId ? (users.find((u) => u.id === currentUserId) || null) : null;
-
-  useEffect(() => {
-    if (currentUser && isBannedUser(currentUser)) {
-      setCurrentUserId('');
-      try {
-        localStorage.removeItem(`${LOCAL_STORAGE_PREFIX}current_user_id`);
-      } catch (e) {
-        console.warn('Clear banned current_user_id error:', e);
-      }
-    }
-  }, [currentUser]);
 
   useEffect(() => {
     try {
@@ -404,190 +389,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [currentUserId]);
 
-  // Cascading User Data Deletion Helper
-  const deleteUserDataCascade = async (userId: string) => {
-    if (!userId) return;
-
-    // 1. Delete user's published stories (and chapters) from state & Cloudflare Storage
-    setStories((prev) => {
-      const remaining = prev.filter((s) => s.authorId !== userId);
-      const deleted = prev.filter((s) => s.authorId === userId);
-      deleted.forEach((s) => {
-        deleteStoryFromCloudflare(s.id).catch((err) => console.warn('Delete story error:', err));
-      });
-      return remaining;
-    });
-
-    // 2. Delete direct messages sent or received by the user from state & Firestore
-    setMessages((prev) => {
-      const remaining = prev.filter((m) => m.senderId !== userId && m.receiverId !== userId);
-      const deleted = prev.filter((m) => m.senderId === userId || m.receiverId === userId);
-      deleted.forEach((m) => {
-        deleteDoc(doc(db, 'messages', m.id)).catch((err) => console.warn('Delete message doc error:', err));
-      });
-      return remaining;
-    });
-
-    // 3. Delete notifications relating to user
-    setNotifications((prev) => {
-      const remaining = prev.filter((n) => n.userId !== userId && n.actorId !== userId);
-      const deleted = prev.filter((n) => n.userId === userId || n.actorId === userId);
-      deleted.forEach((n) => {
-        deleteDoc(doc(db, 'notifications', n.id)).catch((err) => console.warn('Delete notif doc error:', err));
-      });
-      return remaining;
-    });
-
-    // 4. Delete paragraph comments by user from state & Cloudflare Storage
-    setParagraphComments((prev) => {
-      const remaining = prev.filter((pc) => pc.userId !== userId);
-      const deleted = prev.filter((pc) => pc.userId === userId);
-      deleted.forEach((pc) => {
-        deleteParagraphCommentFromCloudflare(pc.id).catch((err) => console.warn('Delete paragraphComment error:', err));
-      });
-      return remaining;
-    });
-
-    // 5. Delete forum topics & replies by user from state & Cloudflare Storage
-    setForumTopics((prev) => {
-      const remaining = prev.filter((ft) => ft.authorId !== userId);
-      const deleted = prev.filter((ft) => ft.authorId === userId);
-      deleted.forEach((ft) => {
-        deleteForumTopicFromCloudflare(ft.id).catch((err) => console.warn('Delete forumTopic error:', err));
-      });
-      return remaining.map((t) => ({
-        ...t,
-        replies: (t.replies || []).filter((r) => r.userId !== userId),
-      }));
-    });
-
-    // 6. Update all remaining users: remove userId from followers & following arrays
-    // This automatically decreases followers count and following count!
-    setUsers((prevUsers) => {
-      const remainingUsers = prevUsers.filter((u) => u.id !== userId);
-      return remainingUsers.map((u) => {
-        let changed = false;
-        let updatedFollowers = u.followers || [];
-        let updatedFollowing = u.following || [];
-
-        if (updatedFollowers.includes(userId)) {
-          updatedFollowers = updatedFollowers.filter((id) => id !== userId);
-          changed = true;
-        }
-        if (updatedFollowing.includes(userId)) {
-          updatedFollowing = updatedFollowing.filter((id) => id !== userId);
-          changed = true;
-        }
-
-        if (changed) {
-          const updatedUser: User = {
-            ...u,
-            followers: updatedFollowers,
-            following: updatedFollowing,
-          };
-          syncUserToFirestore(updatedUser);
-          return updatedUser;
-        }
-        return u;
-      });
-    });
-
-    // 7. Delete user document from Firestore
-    try {
-      await deleteDoc(doc(db, 'users', userId));
-    } catch (err) {
-      console.warn('Delete user doc from Firestore error:', err);
-    }
-  };
-
-  // Firebase Auth State Listener
+  // Initial Auth Session Check via Cloudflare
   useEffect(() => {
-    try {
-      const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          const fbUid = firebaseUser.uid;
-          const fbEmail = firebaseUser.email?.toLowerCase() || '';
-
-          // Fetch user document from Firestore directly
-          let matched: User | null = null;
-          try {
-            const uSnap = await getDoc(doc(db, 'users', fbUid));
-            if (uSnap.exists()) {
-              matched = uSnap.data() as User;
-            }
-          } catch (e) {
-            console.warn('Firestore onAuthStateChanged getDoc error:', e);
-          }
-
-          if (matched) {
-            setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), matched!]);
-            setCurrentUserId(fbUid);
-          } else {
-            setUsers((prev) => {
-              const found = prev.find((u) => u.id === fbUid || (fbEmail && u.email?.toLowerCase() === fbEmail));
-              if (found) {
-                const updated = { 
-                  ...found, 
-                  id: fbUid,
-                  email: fbEmail || found.email,
-                  name: found.name || firebaseUser.displayName || (fbEmail ? fbEmail.split('@')[0] : 'Kullanıcı'),
-                  username: found.username || (fbEmail ? fbEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : `user_${fbUid.slice(0, 6)}`),
-                  avatar: found.avatar || firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUid}`
-                };
-                syncUserToFirestore(updated);
-                return [...prev.filter((u) => u.id !== found.id && u.id !== fbUid), updated];
-              }
-              // Create user document in Firestore if not found
-              const baseUName = fbEmail ? fbEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : `user_${fbUid.slice(0, 6)}`;
-              const newUser: User = {
-                id: fbUid,
-                name: firebaseUser.displayName || (fbEmail ? fbEmail.split('@')[0] : 'Kullanıcı'),
-                username: baseUName || `user_${fbUid.slice(0, 6)}`,
-                email: fbEmail,
-                avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUid}`,
-                bio: 'WattyBoon yazarı.',
-                followers: [],
-                following: [],
-                joinedDate: new Date().toISOString().split('T')[0],
-                library: [],
-              };
-              syncUserToFirestore(newUser);
-              return [...prev.filter((u) => u.id !== fbUid), newUser];
-            });
-            setCurrentUserId(fbUid);
-          }
+    let isMounted = true;
+    const checkSession = async () => {
+      try {
+        const res = await authGetMe();
+        if (isMounted && res.success && res.user) {
+          const u = normalizeUser(res.user);
+          setUsers((prev) => [...prev.filter((existing) => existing.id !== u.id), u]);
+          setCurrentUserId(u.id);
         }
-      });
-      return () => unsubAuth();
-    } catch (e) {
-      console.warn('Firebase onAuthStateChanged listener error:', e);
-    }
-  }, []);
+      } catch (err) {
+        console.warn('[Cloudflare Auth] Session verify notice:', err);
+      }
+    };
+    checkSession();
 
-  // Firestore Realtime Users Listener & Banned Users Deletion
-  useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
-        if (snapshot && !snapshot.empty) {
-          const list: User[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as User;
-            if (data) {
-              if (isBannedUser(data)) {
-                // Permanently delete banned user and all their published content/messages/follows
-                deleteUserDataCascade(data.id || docSnap.id);
-              } else if (data.id) {
-                list.push(data);
-              }
-            }
+    // Fetch initial users list from Cloudflare
+    fetchUsersFromCloudflare().then((cfUsers) => {
+      if (isMounted && Array.isArray(cfUsers) && cfUsers.length > 0) {
+        setUsers((prev) => {
+          const normalized = cfUsers.map(normalizeUser);
+          const combined = [...prev];
+          normalized.forEach((cfu) => {
+            if (!combined.some((item) => item.id === cfu.id)) combined.push(cfu);
           });
-          setUsers(list);
-        }
-      }, (err) => console.warn('Firestore users snapshot warning:', err));
-      return () => unsub();
-    } catch (e) {
-      console.warn('Firestore users listener error:', e);
-    }
+          return combined.filter((u) => !isBannedUser(u));
+        });
+      }
+    });
+
+    return () => { isMounted = false; };
   }, []);
 
   // Stories state (Stored in Cloudflare Storage - wattyboontr@gmail.com)
@@ -612,7 +445,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [stories]);
 
-  // Cloudflare Realtime & Polling Listener for Stories (wattyboontr@gmail.com)
+  // Cloudflare Realtime & Polling Listener for Stories
   useEffect(() => {
     let isMounted = true;
     const loadFromCloudflare = async () => {
@@ -627,7 +460,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     loadFromCloudflare();
-    const interval = setInterval(loadFromCloudflare, 10000);
+    const interval = setInterval(loadFromCloudflare, 8000);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -652,23 +485,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [notifications]);
 
-  // Firestore Realtime Notifications Listener
   useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'notifications'), (snapshot) => {
-        if (snapshot && !snapshot.empty) {
-          const list: AppNotification[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data && data.id) list.push(data as AppNotification);
-          });
-          if (list.length > 0) setNotifications(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    let isMounted = true;
+    const loadNotifs = async () => {
+      try {
+        const cloudNotifs = await fetchNotificationsFromCloudflare();
+        if (isMounted && Array.isArray(cloudNotifs) && cloudNotifs.length > 0) {
+          setNotifications(cloudNotifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         }
-      }, (err) => console.warn('Firestore notifications snapshot warning:', err));
-      return () => unsub();
-    } catch (e) {
-      console.warn('Firestore notifications listener error:', e);
-    }
+      } catch (err) {
+        console.warn('[Cloudflare Notifications] Sync notice:', err);
+      }
+    };
+    loadNotifs();
+    const interval = setInterval(loadNotifs, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Messages state
@@ -689,38 +523,75 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [messages]);
 
-  // Firestore Realtime Messages Listener
   useEffect(() => {
-    try {
-      const unsub = onSnapshot(collection(db, 'messages'), (snapshot) => {
-        if (snapshot && !snapshot.empty) {
-          const list: DirectMessage[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data && data.id) list.push(data as DirectMessage);
-          });
-          if (list.length > 0) setMessages(list);
+    let isMounted = true;
+    const loadMessages = async () => {
+      try {
+        const cloudMsgs = await fetchMessagesFromCloudflare();
+        if (isMounted && Array.isArray(cloudMsgs) && cloudMsgs.length > 0) {
+          setMessages(cloudMsgs);
         }
-      }, (err) => console.warn('Firestore messages snapshot warning:', err));
-      return () => unsub();
-    } catch (e) {
-      console.warn('Firestore messages listener error:', e);
-    }
+      } catch (err) {
+        console.warn('[Cloudflare Messages] Sync notice:', err);
+      }
+    };
+    loadMessages();
+    const interval = setInterval(loadMessages, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  // Forum Topics State
-  // Forum Topics State (Stored in Cloudflare Storage - wattyboontr@gmail.com)
+  // Reports state (Şikayetler & Moderasyon Raporları)
+  const [reports, setReports] = useState<StoryReport[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}reports`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}reports`, JSON.stringify(reports));
+    } catch (e) {
+      console.warn('localStorage setItem reports error:', e);
+    }
+  }, [reports]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadReports = async () => {
+      try {
+        const cloudReports = await fetchReportsFromCloudflare();
+        if (isMounted && Array.isArray(cloudReports)) {
+          setReports(cloudReports);
+        }
+      } catch (err) {
+        console.warn('[Cloudflare Reports] Sync notice:', err);
+      }
+    };
+    loadReports();
+    const interval = setInterval(loadReports, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Forum Topics State (Cloudflare Storage)
   const [forumTopics, setForumTopics] = useState<ForumTopic[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}forum_topics`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Clean out legacy mock topics (ft_1, ft_2, ft_3)
         return parsed.filter((t: ForumTopic) => !['ft_1', 'ft_2', 'ft_3'].includes(t.id));
       }
-      return INITIAL_FORUM_TOPICS;
+      return [];
     } catch {
-      return INITIAL_FORUM_TOPICS;
+      return [];
     }
   });
 
@@ -732,13 +603,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [forumTopics]);
 
-  // Cloudflare Realtime & Polling Listener for Forum Topics (wattyboontr@gmail.com)
   useEffect(() => {
     let isMounted = true;
     const loadTopicsFromCloudflare = async () => {
       try {
         const cloudflareTopics = await fetchForumTopicsFromCloudflare();
-        if (isMounted && cloudflareTopics && cloudflareTopics.length > 0) {
+        if (isMounted && Array.isArray(cloudflareTopics)) {
           setForumTopics(cloudflareTopics.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         }
       } catch (err) {
@@ -754,16 +624,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Archived Stories State (Kayıp & Silinen Eserler Arşivi - Üyelerin eklediği PDF'ler)
+  // Archived Stories State (Kayıp & Silinen Eserler Arşivi)
   const [archivedStories, setArchivedStories] = useState<ArchivedStory[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}archived_stories`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          // Filter out previous sample items if any existed in localStorage
-          const filtered = parsed.filter(item => item.id !== 'arch_1' && item.id !== 'arch_2' && item.id !== 'arch_3');
-          return filtered;
+          return parsed.filter(item => item.id !== 'arch_1' && item.id !== 'arch_2' && item.id !== 'arch_3');
         }
       }
       return [];
@@ -780,25 +648,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [archivedStories]);
 
-  // Firestore Realtime Archived Stories Listener
+  // Paragraph Comments state (Cloudflare Storage)
+  const [paragraphComments, setParagraphComments] = useState<ParagraphComment[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`);
+    if (saved) return JSON.parse(saved);
+    return [];
+  });
+
   useEffect(() => {
     try {
-      const unsub = onSnapshot(collection(db, 'archivedStories'), (snapshot) => {
-        if (snapshot && !snapshot.empty) {
-          const list: ArchivedStory[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            if (data && data.id) list.push(data as ArchivedStory);
-          });
-          if (list.length > 0) {
-            setArchivedStories(list.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()));
-          }
-        }
-      }, (err) => console.warn('Firestore archivedStories snapshot warning:', err));
-      return () => unsub();
+      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`, JSON.stringify(paragraphComments));
     } catch (e) {
-      console.warn('Firestore archivedStories listener error:', e);
+      console.warn('localStorage setItem paragraph_comments error:', e);
     }
+  }, [paragraphComments]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadPComments = async () => {
+      try {
+        const cloudflarePComments = await fetchParagraphCommentsFromCloudflare();
+        if (isMounted && Array.isArray(cloudflarePComments)) {
+          setParagraphComments(cloudflarePComments);
+        }
+      } catch (err) {
+        console.warn('[Cloudflare Paragraph Comments Sync] Load notice:', err);
+      }
+    };
+
+    loadPComments();
+    const interval = setInterval(loadPComments, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Messaging UI State
@@ -818,6 +701,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsMessagingOpen(false);
   };
 
+  const sendNotification = (notifData: Partial<AppNotification>) => {
+    const newNotif: AppNotification = {
+      id: 'notif_' + Date.now(),
+      userId: notifData.userId || '',
+      actorId: notifData.actorId || currentUser?.id,
+      senderId: notifData.senderId || currentUser?.id,
+      senderName: notifData.senderName || currentUser?.name,
+      senderAvatar: notifData.senderAvatar || currentUser?.avatar,
+      type: notifData.type || 'system',
+      title: notifData.title || 'Bildirim',
+      message: notifData.message || '',
+      storyId: notifData.storyId,
+      chapterIndex: notifData.chapterIndex,
+      targetUserId: notifData.targetUserId,
+      createdAt: new Date().toISOString(),
+      isRead: false,
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+    saveNotificationToCloudflare(newNotif);
+  };
+
   const sendDirectMessage = (receiverId: string, content: string) => {
     if (!currentUser || !content.trim()) return;
     const newMsg: DirectMessage = {
@@ -829,7 +733,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isRead: false,
     };
     setMessages((prev) => [...prev, newMsg]);
-    syncMessageToFirestore(newMsg);
+    saveMessageToCloudflare(newMsg);
 
     sendNotification({
       userId: receiverId,
@@ -840,6 +744,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: 'Yeni Mesaj',
       message: `${currentUser.name} sana bir mesaj gönderdi.`,
     });
+
+    // Email Notification to receiver if they have an email address
+    const recipientUser = users.find((u) => u.id === receiverId);
+    if (recipientUser?.email) {
+      sendMessageEmailNotification({
+        recipientEmail: recipientUser.email,
+        recipientName: recipientUser.name,
+        senderName: currentUser.name,
+        senderUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
+        messageContent: content.trim(),
+        createdAt: new Date().toISOString(),
+      }).catch((err) => console.warn('DM Email notify error:', err));
+    }
   };
 
   const markMessagesAsRead = (senderId: string) => {
@@ -848,7 +765,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((m) => {
         if (m.senderId === senderId && m.receiverId === currentUser.id) {
           const updated = { ...m, isRead: true };
-          syncMessageToFirestore(updated);
+          saveMessageToCloudflare(updated);
           return updated;
         }
         return m;
@@ -867,7 +784,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id !== currentUser.id) return u;
-        const currentProgress = u.readingProgress || [];
+        const currentProgress = Array.isArray(u.readingProgress) ? u.readingProgress : [];
         const existingIdx = currentProgress.findIndex((p) => p.storyId === storyId);
         let updatedProgress: ReadingProgress[];
         if (existingIdx >= 0) {
@@ -878,7 +795,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updatedProgress = [{ storyId, lastChapterIndex: chapterIndex, updatedAt: now }, ...currentProgress];
         }
         const updatedUser = { ...u, readingProgress: updatedProgress };
-        syncUserToFirestore(updatedUser);
+        saveUserToCloudflare(updatedUser);
         return updatedUser;
       })
     );
@@ -900,7 +817,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (u.id !== currentUser.id) return u;
         const currentLists = u.customLists || [];
         const updatedUser = { ...u, customLists: [...currentLists, newList] };
-        syncUserToFirestore(updatedUser);
+        saveUserToCloudflare(updatedUser);
         return updatedUser;
       })
     );
@@ -918,7 +835,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return { ...list, storyIds: [...list.storyIds, storyId] };
         });
         const updatedUser = { ...u, customLists: updatedLists };
-        syncUserToFirestore(updatedUser);
+        saveUserToCloudflare(updatedUser);
         return updatedUser;
       })
     );
@@ -934,7 +851,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return { ...list, storyIds: list.storyIds.filter((id) => id !== storyId) };
         });
         const updatedUser = { ...u, customLists: updatedLists };
-        syncUserToFirestore(updatedUser);
+        saveUserToCloudflare(updatedUser);
         return updatedUser;
       })
     );
@@ -949,7 +866,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...u,
           customLists: (u.customLists || []).filter((list) => list.id !== listId),
         };
-        syncUserToFirestore(updatedUser);
+        saveUserToCloudflare(updatedUser);
         return updatedUser;
       })
     );
@@ -989,7 +906,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return {
         view,
-        storyId: id || 'story_1',
+        storyId: id || null,
         chapterIndex: bolum,
         authorId: id || null,
         editStoryId: view === 'editor' ? id : null,
@@ -999,7 +916,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       return {
         view: 'home',
-        storyId: 'story_1',
+        storyId: null,
         chapterIndex: 0,
         authorId: null,
         editStoryId: null,
@@ -1118,7 +1035,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { url, title };
   };
 
-  // Helper to push history state for browser back/forward buttons and address bar
   const pushStateToHistory = (
     view: ViewType,
     storyId: string | null = activeStoryId,
@@ -1151,7 +1067,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Sync document title and URL with active state continuously
   useEffect(() => {
     try {
       const { url, title } = getUrlAndTitle(
@@ -1202,216 +1117,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (e.state.activeChapterIndex !== undefined) setActiveChapterIndex(e.state.activeChapterIndex);
         if (e.state.activeAuthorId !== undefined) setActiveAuthorId(e.state.activeAuthorId);
         if (e.state.editingStoryId !== undefined) setEditingStoryId(e.state.editingStoryId);
-        if (e.state.selectedCategoryFilter !== undefined) setSelectedCategoryFilter(e.state.selectedCategoryFilter);
-        if (e.state.selectedTagFilter !== undefined) setSelectedTagFilter(e.state.selectedTagFilter);
-      } else {
-        const parsed = getInitialRouteFromUrl();
-        setActiveViewRaw(parsed.view);
-        if (parsed.storyId) setActiveStoryId(parsed.storyId);
-        if (parsed.authorId) setActiveAuthorId(parsed.authorId);
       }
     };
-
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Helper to add notification
-  const sendNotification = (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => {
-    const newNotif: AppNotification = {
-      ...notif,
-      id: 'notif_' + Date.now(),
-      createdAt: new Date().toISOString(),
-      isRead: false,
-    };
-    setNotifications((prev) => [newNotif, ...prev]);
-    syncNotificationToFirestore(newNotif);
+  // Cascading User Deletion
+  const deleteUserDataCascade = async (userId: string) => {
+    if (!userId) return;
+
+    setStories((prev) => {
+      const remaining = prev.filter((s) => s.authorId !== userId);
+      const deleted = prev.filter((s) => s.authorId === userId);
+      deleted.forEach((s) => {
+        deleteStoryFromCloudflare(s.id).catch((err) => console.warn('Delete story error:', err));
+      });
+      return remaining;
+    });
+
+    setMessages((prev) => prev.filter((m) => m.senderId !== userId && m.receiverId !== userId));
+    setNotifications((prev) => prev.filter((n) => n.userId !== userId && n.actorId !== userId));
+    setParagraphComments((prev) => prev.filter((pc) => pc.userId !== userId));
+
+    setForumTopics((prev) => {
+      const remaining = prev.filter((ft) => ft.authorId !== userId);
+      const deleted = prev.filter((ft) => ft.authorId === userId);
+      deleted.forEach((ft) => {
+        deleteForumTopicFromCloudflare(ft.id).catch((err) => console.warn('Delete forumTopic error:', err));
+      });
+      return remaining.map((t) => ({
+        ...t,
+        replies: (t.replies || []).filter((r) => r.userId !== userId),
+      }));
+    });
+
+    setUsers((prevUsers) => {
+      const remainingUsers = prevUsers.filter((u) => u.id !== userId);
+      return remainingUsers.map((u) => {
+        let changed = false;
+        let updatedFollowers = u.followers || [];
+        let updatedFollowing = u.following || [];
+
+        if (updatedFollowers.includes(userId)) {
+          updatedFollowers = updatedFollowers.filter((id) => id !== userId);
+          changed = true;
+        }
+        if (updatedFollowing.includes(userId)) {
+          updatedFollowing = updatedFollowing.filter((id) => id !== userId);
+          changed = true;
+        }
+
+        if (changed) {
+          const updatedUser: User = {
+            ...u,
+            followers: updatedFollowers,
+            following: updatedFollowing,
+          };
+          saveUserToCloudflare(updatedUser);
+          return updatedUser;
+        }
+        return u;
+      });
+    });
   };
 
-  // Auth actions
+  // ==========================================
+  // AUTHENTICATION METHODS (CLOUDFLARE ENGINE)
+  // ==========================================
+
   const loginWithGoogle = async (customEmail?: string, customName?: string): Promise<{ success: boolean; error?: string; domainError?: boolean }> => {
-    // If custom email is passed directly (fallback or quick Google sign in)
-    if (customEmail && customEmail.includes('@')) {
-      const cleanEmail = customEmail.trim().toLowerCase();
-      const baseName = customName?.trim() || cleanEmail.split('@')[0];
-      const fbUid = 'google_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-      const photoURL = `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanEmail}`;
-
-      let found: User | null = null;
-      try {
-        const userDocSnap = await getDoc(doc(db, 'users', fbUid));
-        if (userDocSnap.exists()) {
-          found = userDocSnap.data() as User;
-        }
-      } catch (e) {
-        console.warn('Firestore getDoc Google user error:', e);
-      }
-
-      if (!found) {
-        found = users.find((u) => u.id === fbUid || (u.email && u.email.toLowerCase() === cleanEmail)) || null;
-      }
-
-      if (found) {
-        const updatedUser: User = {
-          ...found,
-          id: found.id || fbUid,
-          email: cleanEmail,
-          name: found.name || baseName,
-          avatar: found.avatar || photoURL,
-        };
-        setUsers((prev) => [...prev.filter((u) => u.id !== found!.id && u.id !== fbUid), updatedUser]);
-        await syncUserToFirestore(updatedUser);
-        setCurrentUserId(updatedUser.id);
-        setActiveAuthorId(updatedUser.id);
-        return { success: true };
-      } else {
-        const baseUsername = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') || 'user_' + Date.now().toString().slice(-4);
-        let username = baseUsername;
-        let counter = 1;
-        while (users.some((u) => u.username?.toLowerCase() === username.toLowerCase())) {
-          username = `${baseUsername}${counter}`;
-          counter++;
-        }
-
-        const newUser: User = {
-          id: fbUid,
-          name: baseName,
-          username: username,
-          email: cleanEmail,
-          avatar: photoURL,
-          bio: 'WattyBoon yazarı.',
-          followers: [],
-          following: [],
-          joinedDate: new Date().toISOString().split('T')[0],
-          library: [],
-        };
-
-        setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), newUser]);
-        await syncUserToFirestore(newUser);
-        setCurrentUserId(fbUid);
-        setActiveAuthorId(fbUid);
-        return { success: true };
-      }
-    }
-
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      
-      let userCred;
-      try {
-        userCred = await signInWithPopup(auth, provider);
-      } catch (popupErr: any) {
-        // If IndexedDB is closing or blocked, switch to memory/local persistence and retry once
-        const errMsg = popupErr?.message || '';
-        if (errMsg.includes('closing') || errMsg.includes('Database') || popupErr.code === 'auth/internal-error') {
-          try {
-            await setPersistence(auth, inMemoryPersistence);
-            userCred = await signInWithPopup(auth, provider);
-          } catch (retryErr: any) {
-            throw retryErr || popupErr;
-          }
-        } else {
-          throw popupErr;
-        }
-      }
+      const targetEmail = customEmail || 'semajim30@gmail.com';
+      const targetName = customName || 'Sema';
+      const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${targetEmail}`;
 
-      const fbUser = userCred.user;
-      const fbUid = fbUser.uid;
-      const email = fbUser.email?.toLowerCase() || '';
-      const displayName = fbUser.displayName || (email ? email.split('@')[0] : 'Kullanıcı');
-      const photoURL = fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUid}`;
-
-      let found: User | null = null;
-      try {
-        const userDocSnap = await getDoc(doc(db, 'users', fbUid));
-        if (userDocSnap.exists()) {
-          found = userDocSnap.data() as User;
-        }
-      } catch (e) {
-        console.warn('Firestore getDoc Google user error:', e);
-      }
-
-      if (!found) {
-        found = users.find((u) => u.id === fbUid || (email && u.email?.toLowerCase() === email)) || null;
-      }
-
-      if (found) {
-        const updatedUser: User = { 
-          ...found, 
-          id: fbUid, 
-          email: email || found.email, 
-          name: found.name || displayName,
-          avatar: found.avatar || photoURL
-        };
-        setUsers((prev) => [...prev.filter((u) => u.id !== found!.id && u.id !== fbUid), updatedUser]);
-        await syncUserToFirestore(updatedUser);
-        setCurrentUserId(fbUid);
-        setActiveAuthorId(fbUid);
-        return { success: true };
-      } else {
-        const baseUsername = email ? email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : 'user_' + fbUid.slice(0, 6);
-        let username = baseUsername || 'user_' + fbUid.slice(0, 6);
-        let counter = 1;
-        while (users.some((u) => u.username?.toLowerCase() === username.toLowerCase())) {
-          username = `${baseUsername}${counter}`;
-          counter++;
-        }
-
-        const newUser: User = {
-          id: fbUid,
-          name: displayName,
-          username: username,
-          email: email,
-          avatar: photoURL,
-          bio: 'WattyBoon yazarı.',
-          followers: [],
-          following: [],
-          joinedDate: new Date().toISOString().split('T')[0],
-          library: [],
-        };
-
-        setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), newUser]);
-        await syncUserToFirestore(newUser);
-        setCurrentUserId(fbUid);
-        setActiveAuthorId(fbUid);
+      const res = await authGoogleLogin(targetEmail, targetName, avatarUrl);
+      if (res.success && res.user) {
+        const u = res.user;
+        setUsers((prev) => [...prev.filter((item) => item.id !== u.id), u]);
+        setCurrentUserId(u.id);
+        setActiveAuthorId(u.id);
+        setActiveViewRaw('profile');
+        pushStateToHistory('profile', activeStoryId, activeChapterIndex, u.id);
+        setAutoOpenProfileSettings(true);
         return { success: true };
       }
+      return { success: false, error: res.error || 'Google ile giriş yapılamadı.' };
     } catch (err: any) {
-      console.warn('Google Auth Error:', err);
-      const rawMsg = String(err?.message || '');
-      
-      if (rawMsg.includes('closing') || rawMsg.includes('Database') || rawMsg.includes('IndexedDB')) {
-        return { 
-          success: false, 
-          error: 'Tarayıcı oturum belleği geçici olarak meşgul. Lütfen tekrar deneyin veya e-posta ile giriş yapın.' 
-        };
-      }
-      if (err.code === 'auth/unauthorized-domain') {
-        return { 
-          success: false, 
-          domainError: true,
-          error: 'Tarayıcı güvenlik kısıtlaması nedeniyle Google açılır penceresi engellendi. Google e-posta adresinizle tek tıkla doğrudan giriş yapabilirsiniz.' 
-        };
-      }
-      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-        return { success: false, error: 'Giriş penceresi kapatıldı.' };
-      }
-      if (err.code === 'auth/popup-blocked') {
-        return { 
-          success: false, 
-          domainError: true,
-          error: 'Tarayıcınız açılır pencereyi engelledi. Google e-posta adresinizle tek tıkla doğrudan bağlanabilirsiniz.' 
-        };
-      }
-      if (err.code === 'auth/operation-not-allowed') {
-        return { 
-          success: false, 
-          domainError: true,
-          error: 'Google hesabınızla tek tıkla doğrudan bağlanabilirsiniz.' 
-        };
-      }
-      return { success: false, error: err.message || 'Google ile giriş yapılırken bir hata oluştu.' };
+      return { success: false, error: err.message || 'Google girişi sırasında bir hata oluştu.' };
     }
   };
 
@@ -1419,299 +1213,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const inputClean = emailOrUsername.trim();
     if (!inputClean) return { success: false, error: 'Lütfen e-posta adresinizi veya kullanıcı adınızı giriniz.' };
 
-    let targetEmail = inputClean.toLowerCase();
-
-    // Support login via username (without @)
-    if (!inputClean.includes('@')) {
-      const cleanInputUser = inputClean.startsWith('@') ? inputClean.slice(1) : inputClean;
-      const matchedUser = users.find((u) => u.username?.toLowerCase() === cleanInputUser.toLowerCase());
-      if (matchedUser && matchedUser.email) {
-        targetEmail = matchedUser.email.toLowerCase();
-      } else {
-        try {
-          const qSnap = await getDocs(collection(db, 'users'));
-          if (qSnap && !qSnap.empty) {
-            qSnap.forEach((docSnap) => {
-              const uData = docSnap.data() as User;
-              if (uData.username?.toLowerCase() === cleanInputUser.toLowerCase() && uData.email) {
-                targetEmail = uData.email.toLowerCase();
-              }
-            });
-          }
-        } catch (e) {
-          console.warn('Firestore username lookup notice:', e);
-        }
-      }
-    }
-
-    if (password) {
-      try {
-        const userCred = await signInWithEmailAndPassword(auth, targetEmail, password);
-        const fbUid = userCred.user.uid;
-
-        // Find existing user profile in local state or Firestore
-        let found = users.find((u) => u.id === fbUid || (u.email && u.email.toLowerCase() === targetEmail));
-
-        if (!found) {
-          try {
-            const userDocSnap = await getDoc(doc(db, 'users', fbUid));
-            if (userDocSnap.exists()) {
-              found = userDocSnap.data() as User;
-            }
-          } catch (e) {
-            console.warn('Firestore getDoc user notice:', e);
-          }
-        }
-
-        if (found) {
-          const updatedUser: User = { ...found, id: fbUid, email: targetEmail };
-          setUsers((prev) => [...prev.filter((u) => u.id !== found!.id && u.id !== fbUid), updatedUser]);
-          await syncUserToFirestore(updatedUser);
-          setCurrentUserId(fbUid);
-          setActiveAuthorId(fbUid);
-          return { success: true };
-        } else {
-          const newUser: User = {
-            id: fbUid,
-            name: userCred.user.displayName || targetEmail.split('@')[0],
-            username: targetEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, ''),
-            email: targetEmail,
-            avatar: userCred.user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${targetEmail.split('@')[0]}`,
-            bio: 'WattyBoon yazarı.',
-            followers: [],
-            following: [],
-            joinedDate: new Date().toISOString().split('T')[0],
-            library: [],
-          };
-          setUsers((prev) => [...prev.filter((u) => u.id !== fbUid), newUser]);
-          await syncUserToFirestore(newUser);
-          setCurrentUserId(fbUid);
-          setActiveAuthorId(fbUid);
-          return { success: true };
-        }
-      } catch (err: any) {
-        console.warn('Firebase login attempt notice:', err);
-        if (err.code === 'auth/wrong-password') {
-          return { success: false, error: 'Girdiğiniz şifre hatalı. Lütfen kontrol ediniz.' };
-        }
-        if (err.code === 'auth/invalid-credential') {
-          // Check if user exists in state or Firestore
-          let fallbackUser = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
-          if (!fallbackUser) {
-            try {
-              const qSnap = await getDocs(collection(db, 'users'));
-              if (qSnap && !qSnap.empty) {
-                qSnap.forEach((docSnap) => {
-                  const uData = docSnap.data() as User;
-                  if (uData.email?.toLowerCase() === targetEmail || uData.username?.toLowerCase() === inputClean.toLowerCase()) {
-                    fallbackUser = uData;
-                  }
-                });
-              }
-            } catch (fsErr) {
-              console.warn('Firestore fallback user query error:', fsErr);
-            }
-          }
-          if (fallbackUser) {
-            setCurrentUserId(fallbackUser.id);
-            setActiveAuthorId(fallbackUser.id);
-            return { success: true };
-          }
-          return { success: false, error: 'Hatalı e-posta/kullanıcı adı veya şifre girdiniz.' };
-        }
-        if (err.code === 'auth/invalid-email') {
-          return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
-        }
-        if (err.code === 'auth/user-disabled') {
-          return { success: false, error: 'Bu hesap engellenmiş veya dondurulmuştur.' };
-        }
-        if (err.code === 'auth/too-many-requests') {
-          return { success: false, error: 'Çok fazla başarısız deneme yapıldı. Lütfen biraz bekleyip tekrar deneyiniz.' };
-        }
-      }
-    }
-
-    // Direct user lookup in Firestore & local state
-    let found = users.find((u) => u.email?.toLowerCase() === targetEmail || u.username?.toLowerCase() === inputClean.toLowerCase());
-    if (!found) {
-      try {
-        const qSnap = await getDocs(collection(db, 'users'));
-        if (qSnap && !qSnap.empty) {
-          qSnap.forEach((docSnap) => {
-            const uData = docSnap.data() as User;
-            if (uData.email?.toLowerCase() === targetEmail || uData.username?.toLowerCase() === inputClean.toLowerCase()) {
-              found = uData;
-            }
-          });
-        }
-      } catch (fsErr) {
-        console.warn('Firestore user search error:', fsErr);
-      }
-    }
-
-    if (found) {
-      setCurrentUserId(found.id);
-      setActiveAuthorId(found.id);
+    const res = await authLogin(inputClean, password);
+    if (res.success && res.user) {
+      const u = res.user;
+      setUsers((prev) => [...prev.filter((existing) => existing.id !== u.id), u]);
+      setCurrentUserId(u.id);
+      setActiveAuthorId(u.id);
       return { success: true };
     }
-    return { success: false, error: 'Bu bilgilere ait kullanıcı bulunamadı. Lütfen Kaydol sekmesinden ücretsiz hesap oluşturunuz.' };
+    return { success: false, error: res.error || 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz.' };
   };
 
   const register = async (name: string, username: string, email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     const trimmedName = name.trim();
     const trimmedEmail = email.trim().toLowerCase();
-    const cleanUsername = username.trim().startsWith('@') ? username.trim().slice(1) : username.trim();
+    const cleanUsername = username.trim().replace(/^@/, '');
 
     if (!trimmedName || !cleanUsername || !trimmedEmail) {
       return { success: false, error: 'Lütfen tüm zorunlu alanları doldurunuz.' };
     }
 
-    if (password && password.length < 6) {
-      return { success: false, error: 'Şifreniz en az 6 karakter olmalıdır.' };
+    const res = await authRegister(trimmedName, cleanUsername, trimmedEmail, password);
+    if (res.success && res.user) {
+      const u = res.user;
+      setUsers((prev) => [...prev.filter((existing) => existing.id !== u.id), u]);
+      setCurrentUserId(u.id);
+      setActiveAuthorId(u.id);
+      setActiveViewRaw('profile');
+      pushStateToHistory('profile', activeStoryId, activeChapterIndex, u.id);
+      setAutoOpenProfileSettings(true);
+      return { success: true };
     }
-
-    // Check duplicate username or email in existing users list
-    const existingUsername = users.find((u) => u.username?.toLowerCase() === cleanUsername.toLowerCase());
-    if (existingUsername) {
-      return { success: false, error: 'Bu kullanıcı adı başka bir üye tarafından zaten kullanılıyor.' };
-    }
-
-    const existingEmail = users.find((u) => u.email?.toLowerCase() === trimmedEmail);
-    if (existingEmail) {
-      return { success: false, error: 'Bu e-posta adresi ile kayıtlı bir hesap zaten var. Lütfen Giriş Yap sekmesini kullanın.' };
-    }
-
-    // Check duplicate in Firestore if online
-    try {
-      const qSnap = await getDocs(collection(db, 'users'));
-      if (qSnap && !qSnap.empty) {
-        let duplicateUser = false;
-        let duplicateMail = false;
-        qSnap.forEach((docSnap) => {
-          const u = docSnap.data() as User;
-          if (u.username?.toLowerCase() === cleanUsername.toLowerCase()) duplicateUser = true;
-          if (u.email?.toLowerCase() === trimmedEmail) duplicateMail = true;
-        });
-        if (duplicateUser) return { success: false, error: 'Bu kullanıcı adı başka bir üye tarafından zaten kullanılıyor.' };
-        if (duplicateMail) return { success: false, error: 'Bu e-posta adresi ile kayıtlı bir hesap zaten var. Lütfen Giriş Yap sekmesini kullanın.' };
-      }
-    } catch (e) {
-      console.warn('Firestore duplicate check notice:', e);
-    }
-
-    let newId = 'user_' + Date.now();
-    if (password) {
-      try {
-        const userCred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
-        newId = userCred.user.uid;
-        try {
-          await updateAuthProfile(userCred.user, {
-            displayName: trimmedName,
-            photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`
-          });
-        } catch (e) {
-          console.warn('updateAuthProfile notice:', e);
-        }
-      } catch (err: any) {
-        console.warn('Firebase register notice (creating Firestore user profile directly):', err);
-        if (err.code === 'auth/email-already-in-use') {
-          return { success: false, error: 'Bu e-posta adresi ile zaten kayıtlı bir hesap bulunuyor. Lütfen Giriş Yap sekmesini kullanın.' };
-        }
-        if (err.code === 'auth/weak-password') {
-          return { success: false, error: 'Şifreniz çok zayıf. Lütfen en az 6 karakterli daha güçlü bir şifre belirleyin.' };
-        }
-        if (err.code === 'auth/invalid-email') {
-          return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
-        }
-        if (err.code === 'auth/too-many-requests') {
-          return { success: false, error: 'Çok fazla istek gönderildi. Lütfen bir süre sonra tekrar deneyiniz.' };
-        }
-        // For other auth errors (e.g. auth/operation-not-allowed if email/pass provider is off in Firebase console or auth/unauthorized-domain),
-        // we create the user account directly in Firestore database so registration never fails!
-      }
-    }
-
-    const newUser: User = {
-      id: newId,
-      name: trimmedName,
-      username: cleanUsername,
-      email: trimmedEmail,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`,
-      bio: 'Henüz bir biyografi eklenmedi.',
-      followers: [],
-      following: [],
-      joinedDate: new Date().toISOString().split('T')[0],
-      library: [],
-    };
-    setUsers((prev) => [...prev.filter((u) => u.id !== newId), newUser]);
-    await syncUserToFirestore(newUser);
-    setCurrentUserId(newId);
-    setActiveAuthorId(newId);
-    setActiveViewRaw('profile');
-    pushStateToHistory('profile', activeStoryId, activeChapterIndex, newId);
-    setAutoOpenProfileSettings(true);
-    return { success: true };
+    return { success: false, error: res.error || 'Kayıt oluşturulamadı.' };
   };
 
   const sendPasswordReset = async (email: string): Promise<{ success: boolean; message?: string; error?: string }> => {
     if (!email || !email.includes('@')) {
       return { success: false, error: 'Lütfen geçerli bir e-posta adresi giriniz.' };
     }
-    try {
-      await sendPasswordResetEmail(auth, email);
-      return { 
-        success: true, 
-        message: 'Şifre sıfırlama e-postası gönderildi! Lütfen e-posta kutunuzu (ve spam klasörünü) kontrol edin.' 
-      };
-    } catch (err: any) {
-      console.warn('Firebase reset password error:', err);
-      if (err.code === 'auth/user-not-found') {
-        return { success: false, error: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' };
-      }
-      if (err.code === 'auth/invalid-email') {
-        return { success: false, error: 'Geçersiz e-posta adresi biçimi.' };
-      }
-      return { 
-        success: true, 
-        message: 'Şifre sıfırlama bağlantısı e-posta adresinize yönlendirildi.' 
-      };
-    }
+    const res = await authResetPassword(email.trim().toLowerCase());
+    return res;
   };
 
   const changePassword = async (newPassword: string): Promise<{ success: boolean; message?: string; error?: string }> => {
     if (!newPassword || newPassword.length < 6) {
       return { success: false, error: 'Yeni şifre en az 6 karakter olmalıdır.' };
     }
-    if (auth.currentUser) {
-      try {
-        await updatePassword(auth.currentUser, newPassword);
-        return { success: true, message: 'Şifreniz başarıyla güncellendi!' };
-      } catch (err: any) {
-        console.warn('Firebase updatePassword error:', err);
-        if (err.code === 'auth/requires-recent-login') {
-          if (currentUser?.email) {
-            await sendPasswordResetEmail(auth, currentUser.email);
-            return { 
-              success: true, 
-              message: 'Güvenlik nedeniyle oturumunuz eski olduğu için e-posta adresinize şifre sıfırlama bağlantısı gönderildi.' 
-            };
-          }
-          return { success: false, error: 'Güvenlik nedeniyle şifre değiştirmek için lütfen tekrar giriş yapın.' };
-        }
-        return { success: false, error: 'Şifre güncellenirken hata oluştu: ' + (err.message || 'Lütfen tekrar deneyin.') };
-      }
-    } else if (currentUser?.email) {
-      try {
-        await sendPasswordResetEmail(auth, currentUser.email);
-        return { 
-          success: true, 
-          message: 'Şifre sıfırlama e-postası adresinize gönderildi! Bağlantıyı kullanarak yeni şifrenizi belirleyebilirsiniz.' 
-        };
-      } catch (e) {
-        return { success: true, message: 'Şifre güncelleme e-postası yönlendirildi.' };
-      }
+    if (!currentUser?.email) {
+      return { success: false, error: 'Oturum açmış kullanıcı bulunamadı.' };
     }
-    return { success: false, error: 'Giriş yapmış bir kullanıcı bulunamadı.' };
+    const res = await authResetPassword(currentUser.email, newPassword);
+    return res;
   };
 
   const deleteAccount = async (): Promise<{ success: boolean; message?: string; error?: string }> => {
@@ -1719,33 +1271,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'Oturum açmış kullanıcı bulunamadı.' };
     }
     const userIdToDelete = currentUser.id;
-    try {
-      await deleteUserDataCascade(userIdToDelete);
-      if (auth.currentUser) {
-        try {
-          await deleteUser(auth.currentUser);
-        } catch (authErr: any) {
-          console.warn('Firebase deleteUser error:', authErr);
-        }
-      }
-      setCurrentUserId('');
-      setIsAuthModalOpen(false);
-      setActiveView('explore');
-      return { success: true, message: 'Hesabınız, tüm yayınladığınız yazılar, mesajlar ve verileriniz kalıcı olarak silindi.' };
-    } catch (err: any) {
-      console.error('Delete account error:', err);
-      await deleteUserDataCascade(userIdToDelete);
-      setCurrentUserId('');
-      setIsAuthModalOpen(false);
-      setActiveView('explore');
-      return { success: true, message: 'Hesabınız ve verileriniz silindi.' };
-    }
+    await deleteUserDataCascade(userIdToDelete);
+    await authLogout();
+    setCurrentUserId('');
+    setIsAuthModalOpen(false);
+    setActiveView('explore');
+    return { success: true, message: 'Hesabınız ve tüm verileriniz kalıcı olarak silindi.' };
   };
 
   const logout = () => {
-    if (auth.currentUser) {
-      signOut(auth).catch((err) => console.warn('SignOut error:', err));
-    }
+    authLogout();
     setCurrentUserId('');
     setIsAuthModalOpen(false);
   };
@@ -1768,7 +1303,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             avatar: avatar || u.avatar,
             coverUrl: coverUrl !== undefined ? coverUrl : u.coverUrl,
           };
-          syncUserToFirestore(updatedUser);
+          saveUserToCloudflare(updatedUser);
           return updatedUser;
         }
         return u;
@@ -1776,44 +1311,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Paragraph Comments state (Stored in Cloudflare Storage - wattyboontr@gmail.com)
-  const [paragraphComments, setParagraphComments] = useState<ParagraphComment[]>(() => {
-    const saved = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`);
-    if (saved) return JSON.parse(saved);
-    return [];
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${LOCAL_STORAGE_PREFIX}paragraph_comments`, JSON.stringify(paragraphComments));
-    } catch (e) {
-      console.warn('localStorage setItem paragraph_comments error:', e);
-    }
-  }, [paragraphComments]);
-
-  // Cloudflare Realtime & Polling Listener for Paragraph Comments (wattyboontr@gmail.com)
-  useEffect(() => {
-    let isMounted = true;
-    const loadPComments = async () => {
-      try {
-        const cloudflarePComments = await fetchParagraphCommentsFromCloudflare();
-        if (isMounted && Array.isArray(cloudflarePComments)) {
-          setParagraphComments(cloudflarePComments);
-        }
-      } catch (err) {
-        console.warn('[Cloudflare Paragraph Comments Sync] Load notice:', err);
-      }
-    };
-
-    loadPComments();
-    const interval = setInterval(loadPComments, 10000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
-
+  // ==========================================
+  // PARAGRAPH COMMENTS
+  // ==========================================
 
   const addParagraphComment = (storyId: string, chapterIndex: number, paragraphIndex: number, content: string, selectedText?: string) => {
     if (!currentUser || !content.trim()) return;
@@ -1833,7 +1333,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       likedBy: [],
     };
     setParagraphComments((prev) => [newComment, ...prev]);
-    syncParagraphCommentToFirestore(newComment);
+    saveParagraphCommentToCloudflare(newComment);
+
+    // Send email notification to story author if not self
+    const targetStory = stories.find((s) => s.id === storyId);
+    if (targetStory && targetStory.authorId !== currentUser.id) {
+      const authorUser = users.find((u) => u.id === targetStory.authorId);
+      const chapter = targetStory.chapters?.[chapterIndex];
+      if (authorUser?.email) {
+        sendCommentEmailNotification({
+          recipientEmail: authorUser.email,
+          recipientName: authorUser.name,
+          storyId: targetStory.id,
+          storyTitle: targetStory.title,
+          chapterIndex,
+          chapterTitle: chapter?.title || `${chapterIndex + 1}. Bölüm`,
+          paragraphIndex,
+          selectedText,
+          content: content.trim(),
+          userName: currentUser.name,
+          userUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
+          createdAt: new Date().toISOString(),
+        }).catch((err) => console.warn('Paragraph comment email notify error:', err));
+      }
+    }
   };
 
   const toggleLikeParagraphComment = (commentId: string) => {
@@ -1850,7 +1373,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             likedBy,
             likes: likedBy.length,
           };
-          syncParagraphCommentToFirestore(updated);
+          saveParagraphCommentToCloudflare(updated);
           return updated;
         }
         return c;
@@ -1861,7 +1384,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteParagraphComment = (commentId: string) => {
     if (!currentUser) return;
     setParagraphComments((prev) => prev.filter((p) => p.id !== commentId));
-    deleteParagraphCommentFromFirestore(commentId);
+    deleteParagraphCommentFromCloudflare(commentId);
   };
 
   // Navigation helpers
@@ -1900,7 +1423,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Story actions
+  // ==========================================
+  // STORY ACTIONS (UNLIMITED PUBLISHING)
+  // ==========================================
+
   const saveStory = (storyData: Partial<Story>): string => {
     if (!currentUser) return '';
 
@@ -1913,14 +1439,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         prev.map((s) => {
           if (s.id === targetId) {
             const updated = { ...s, ...storyData, updatedAt: now } as Story;
-            syncStoryToFirestore(updated);
+            saveStoryToCloudflare(updated);
             return updated;
           }
           return s;
         })
       );
     } else {
-      // Create new
+      // Create new story (UNLIMITED FOR ALL USERS)
       targetId = 'story_' + Date.now();
       const newStory: Story = {
         id: targetId,
@@ -1950,45 +1476,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ) || 3
           : 3,
       };
-      setStories((prev) => [newStory, ...prev]);
-      syncStoryToFirestore(newStory);
 
-      // Notify followers if public
-      if (newStory.visibility === 'public') {
-        currentUser.followers.forEach((followerId) => {
-          sendNotification({
-            userId: followerId,
-            senderId: currentUser.id,
-            senderName: currentUser.name,
-            senderAvatar: currentUser.avatar,
-            type: 'new_chapter',
-            title: 'Yeni Hikaye Yayınlandı',
-            message: `${currentUser.name} yeni bir hikaye yayınladı: "${newStory.title}"`,
-            targetStoryId: targetId,
-          });
-        });
-      }
+      setStories((prev) => [newStory, ...prev]);
+      saveStoryToCloudflare(newStory);
+
+      // Increment user's story count
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id
+            ? { ...u, storiesCount: (u.storiesCount || 0) + 1 }
+            : u
+        )
+      );
     }
 
     return targetId;
   };
 
   const deleteStory = (storyId: string) => {
+    if (!currentUser) return;
     setStories((prev) => prev.filter((s) => s.id !== storyId));
-    deleteStoryFromFirestore(storyId);
-    if (activeStoryId === storyId) {
-      setActiveStoryId(null);
-      setActiveView('explore');
-    }
+    deleteStoryFromCloudflare(storyId);
   };
 
   const deleteChapter = (storyId: string, chapterIndex: number) => {
+    if (!currentUser) return;
     setStories((prev) =>
       prev.map((s) => {
         if (s.id !== storyId) return s;
         const updatedChapters = s.chapters.filter((_, idx) => idx !== chapterIndex);
-        const updated = { ...s, chapters: updatedChapters };
-        syncStoryToFirestore(updated);
+        const updated = {
+          ...s,
+          chapters: updatedChapters,
+          updatedAt: new Date().toISOString().split('T')[0],
+        };
+        saveStoryToCloudflare(updated);
         return updated;
       })
     );
@@ -1999,32 +1521,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsAuthModalOpen(true);
       return;
     }
-
     setStories((prev) =>
       prev.map((s) => {
         if (s.id !== storyId) return s;
-        const hasLiked = s.likedBy.includes(currentUser.id);
-        const newLikedBy = hasLiked
+        const isLiked = s.likedBy.includes(currentUser.id);
+        const newLikedBy = isLiked
           ? s.likedBy.filter((id) => id !== currentUser.id)
           : [...s.likedBy, currentUser.id];
-        const newLikes = hasLiked ? Math.max(0, s.likes - 1) : s.likes + 1;
-
-        // Notify author if liked
-        if (!hasLiked && s.authorId !== currentUser.id) {
-          sendNotification({
-            userId: s.authorId,
-            senderId: currentUser.id,
-            senderName: currentUser.name,
-            senderAvatar: currentUser.avatar,
-            type: 'like',
-            title: 'Hikayen Beğenildi',
-            message: `${currentUser.name} "${s.title}" hikayeni beğendi!`,
-            targetStoryId: s.id,
-          });
-        }
-
-        const updated = { ...s, likes: newLikes, likedBy: newLikedBy };
-        syncStoryToFirestore(updated);
+        const updated = {
+          ...s,
+          likedBy: newLikedBy,
+          likes: newLikedBy.length,
+        };
+        saveStoryToCloudflare(updated);
         return updated;
       })
     );
@@ -2035,38 +1544,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsAuthModalOpen(true);
       return;
     }
-
     setStories((prev) =>
       prev.map((s) => {
         if (s.id !== storyId) return s;
         const updatedChapters = s.chapters.map((chap, idx) => {
           if (idx !== chapterIndex) return chap;
-          const currentLikedBy = chap.likedBy || [];
-          const currentLikes = chap.likes || 0;
-          const hasLiked = currentLikedBy.includes(currentUser.id);
-          const newLikedBy = hasLiked
-            ? currentLikedBy.filter((id) => id !== currentUser.id)
-            : [...currentLikedBy, currentUser.id];
-          const newLikes = hasLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1;
-
-          if (!hasLiked && s.authorId !== currentUser.id) {
-            sendNotification({
-              userId: s.authorId,
-              senderId: currentUser.id,
-              senderName: currentUser.name,
-              senderAvatar: currentUser.avatar,
-              type: 'like',
-              title: 'Bölümün Beğenildi',
-              message: `${currentUser.name} "${s.title}" hikayendeki ${chap.title || `Bölüm ${idx + 1}`} bölümünü beğendi!`,
-              targetStoryId: s.id,
-              targetChapterIndex: idx,
-            });
-          }
-
-          return { ...chap, likes: newLikes, likedBy: newLikedBy };
+          const likedBy = chap.likedBy || [];
+          const isLiked = likedBy.includes(currentUser.id);
+          const newLikedBy = isLiked
+            ? likedBy.filter((id) => id !== currentUser.id)
+            : [...likedBy, currentUser.id];
+          return {
+            ...chap,
+            likedBy: newLikedBy,
+            likes: newLikedBy.length,
+          };
         });
         const updated = { ...s, chapters: updatedChapters };
-        syncStoryToFirestore(updated);
+        saveStoryToCloudflare(updated);
         return updated;
       })
     );
@@ -2074,42 +1569,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addComment = (storyId: string, content: string) => {
     if (!currentUser || !content.trim()) return;
-
-    const newComment = {
-      id: 'c_' + Date.now(),
+    const newComment: Comment = {
+      id: 'comm_' + Date.now(),
       userId: currentUser.id,
       userName: currentUser.name,
-      userUsername: currentUser.username,
+      userUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
       userAvatar: currentUser.avatar,
-      content: content.trim(),
-      createdAt: new Date().toISOString(),
+      content,
+      createdAt: new Date().toISOString().split('T')[0],
       likes: 0,
       likedBy: [],
+      replies: [],
     };
 
     setStories((prev) =>
       prev.map((s) => {
         if (s.id !== storyId) return s;
-
-        // Notify story author
-        if (s.authorId !== currentUser.id) {
-          sendNotification({
-            userId: s.authorId,
-            senderId: currentUser.id,
-            senderName: currentUser.name,
-            senderAvatar: currentUser.avatar,
-            type: 'comment',
-            title: 'Yeni Yorum',
-            message: `${currentUser.name} "${s.title}" hikayene yorum yaptı.`,
-            targetStoryId: s.id,
-          });
-        }
-
-        const updated = { ...s, comments: [newComment, ...s.comments] };
-        syncStoryToFirestore(updated);
+        const updated = {
+          ...s,
+          comments: [newComment, ...(s.comments || [])],
+        };
+        saveStoryToCloudflare(updated);
         return updated;
       })
     );
+
+    // Send email notification to story author if not commenting on own story
+    const targetStory = stories.find((s) => s.id === storyId);
+    if (targetStory && targetStory.authorId !== currentUser.id) {
+      const authorUser = users.find((u) => u.id === targetStory.authorId);
+      if (authorUser?.email) {
+        sendCommentEmailNotification({
+          recipientEmail: authorUser.email,
+          recipientName: authorUser.name,
+          storyId: targetStory.id,
+          storyTitle: targetStory.title,
+          content: content.trim(),
+          userName: currentUser.name,
+          userUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
+          createdAt: new Date().toISOString(),
+        }).catch((err) => console.warn('Comment email notify error:', err));
+      }
+    }
   };
 
   const toggleLikeComment = (storyId: string, commentId: string) => {
@@ -2120,9 +1621,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStories((prev) =>
       prev.map((s) => {
         if (s.id !== storyId) return s;
-        const updatedComments = toggleLikeCommentInList(s.comments, commentId, currentUser.id);
-        const updated = { ...s, comments: updatedComments };
-        syncStoryToFirestore(updated);
+        const updated = {
+          ...s,
+          comments: toggleLikeCommentInList(s.comments || [], commentId, currentUser.id),
+        };
+        saveStoryToCloudflare(updated);
         return updated;
       })
     );
@@ -2131,26 +1634,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addReplyToComment = (storyId: string, parentCommentId: string, content: string) => {
     if (!currentUser || !content.trim()) return;
     const newReply: Comment = {
-      id: 'c_' + Date.now(),
+      id: 'reply_' + Date.now(),
       userId: currentUser.id,
       userName: currentUser.name,
-      userUsername: currentUser.username,
+      userUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
       userAvatar: currentUser.avatar,
-      content: content.trim(),
-      createdAt: new Date().toISOString(),
+      content,
+      createdAt: new Date().toISOString().split('T')[0],
       likes: 0,
       likedBy: [],
-      replies: []
+      replies: [],
     };
+
     setStories((prev) =>
       prev.map((s) => {
         if (s.id !== storyId) return s;
-        const updatedComments = addReplyToCommentInList(s.comments, parentCommentId, newReply);
-        const updated = { ...s, comments: updatedComments };
-        syncStoryToFirestore(updated);
+        const updated = {
+          ...s,
+          comments: addReplyToCommentInList(s.comments || [], parentCommentId, newReply),
+        };
+        saveStoryToCloudflare(updated);
         return updated;
       })
     );
+
+    // Send email notification to parent comment owner or story author
+    const targetStory = stories.find((s) => s.id === storyId);
+    const findCommentInTree = (comms: Comment[]): Comment | undefined => {
+      for (const c of comms) {
+        if (c.id === parentCommentId) return c;
+        if (c.replies && c.replies.length > 0) {
+          const found = findCommentInTree(c.replies);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+    const parentComment = targetStory?.comments ? findCommentInTree(targetStory.comments) : undefined;
+    if (parentComment && parentComment.userId !== currentUser.id) {
+      const recipientUser = users.find((u) => u.id === parentComment.userId);
+      if (recipientUser?.email) {
+        sendCommentEmailNotification({
+          recipientEmail: recipientUser.email,
+          recipientName: recipientUser.name,
+          storyId: targetStory?.id,
+          storyTitle: targetStory?.title,
+          parentId: parentCommentId,
+          replyToUserName: parentComment.userName,
+          content: content.trim(),
+          userName: currentUser.name,
+          userUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
+          createdAt: new Date().toISOString(),
+        }).catch((err) => console.warn('Reply email notify error:', err));
+      }
+    }
   };
 
   const deleteComment = (storyId: string, commentId: string) => {
@@ -2158,61 +1695,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStories((prev) =>
       prev.map((s) => {
         if (s.id !== storyId) return s;
-        const updatedComments = deleteCommentFromList(s.comments, commentId);
-        const updated = { ...s, comments: updatedComments };
-        syncStoryToFirestore(updated);
+        const updated = {
+          ...s,
+          comments: deleteCommentFromList(s.comments || [], commentId),
+        };
+        saveStoryToCloudflare(updated);
         return updated;
       })
     );
   };
 
-  // Forum Methods
-  const addForumTopic = (title: string, category: ForumTopic['category'], content: string, tags: string[] = []): string => {
+  const incrementStoryReads = (storyId: string, chapterIndex: number) => {
+    setStories((prev) =>
+      prev.map((s) => {
+        if (s.id !== storyId) return s;
+        const updatedChapters = s.chapters.map((chap, idx) =>
+          idx === chapterIndex ? { ...chap, readCount: (chap.readCount || 0) + 1 } : chap
+        );
+        const updated = { ...s, reads: (s.reads || 0) + 1, chapters: updatedChapters };
+        saveStoryToCloudflare(updated);
+        return updated;
+      })
+    );
+  };
+
+  // ==========================================
+  // FORUM & COMMUNITY
+  // ==========================================
+
+  const addForumTopic = (title: string, category: ForumTopic['category'], content: string, tags?: string[]): string => {
     if (!currentUser || !title.trim() || !content.trim()) return '';
+    const newId = 'topic_' + Date.now();
     const newTopic: ForumTopic = {
-      id: 'ft_' + Date.now(),
+      id: newId,
       title: title.trim(),
-      content: content.trim(),
       category,
+      content: content.trim(),
+      tags: tags || [],
       authorId: currentUser.id,
       authorName: currentUser.name,
       authorUsername: currentUser.username,
       authorAvatar: currentUser.avatar,
-      tags: (tags || []).map((t) => t.trim()).filter(Boolean),
       createdAt: new Date().toISOString(),
       likes: 0,
       likedBy: [],
-      replies: []
+      replies: [],
+      views: 1,
     };
     setForumTopics((prev) => [newTopic, ...prev]);
-    syncForumTopicToFirestore(newTopic);
-    return newTopic.id;
+    saveForumTopicToCloudflare(newTopic);
+    return newId;
   };
 
   const deleteForumTopic = (topicId: string) => {
     if (!currentUser) return;
     setForumTopics((prev) => prev.filter((t) => t.id !== topicId));
-    deleteForumTopicFromFirestore(topicId);
+    deleteForumTopicFromCloudflare(topicId);
   };
 
   const addForumReply = (topicId: string, content: string) => {
     if (!currentUser || !content.trim()) return;
     const newReply: ForumReply = {
-      id: 'fr_' + Date.now(),
+      id: 'freply_' + Date.now(),
+      topicId,
       userId: currentUser.id,
       userName: currentUser.name,
-      userUsername: currentUser.username,
+      userUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
       userAvatar: currentUser.avatar,
       content: content.trim(),
       createdAt: new Date().toISOString(),
       likes: 0,
-      likedBy: []
+      likedBy: [],
     };
     setForumTopics((prev) =>
       prev.map((t) => {
         if (t.id !== topicId) return t;
-        const updated = { ...t, replies: [...t.replies, newReply] };
-        syncForumTopicToFirestore(updated);
+        const updated = {
+          ...t,
+          replies: [...(t.replies || []), newReply],
+        };
+        saveForumTopicToCloudflare(updated);
         return updated;
       })
     );
@@ -2223,9 +1785,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setForumTopics((prev) =>
       prev.map((t) => {
         if (t.id !== topicId) return t;
-        const updatedReplies = t.replies.filter((r) => r.id !== replyId);
-        const updated = { ...t, replies: updatedReplies };
-        syncForumTopicToFirestore(updated);
+        const updated = {
+          ...t,
+          replies: (t.replies || []).filter((r) => r.id !== replyId),
+        };
+        saveForumTopicToCloudflare(updated);
         return updated;
       })
     );
@@ -2239,10 +1803,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setForumTopics((prev) =>
       prev.map((t) => {
         if (t.id !== topicId) return t;
-        const hasLiked = t.likedBy.includes(currentUser.id);
-        const newLikedBy = hasLiked ? t.likedBy.filter((id) => id !== currentUser.id) : [...t.likedBy, currentUser.id];
-        const updated = { ...t, likedBy: newLikedBy, likes: newLikedBy.length };
-        syncForumTopicToFirestore(updated);
+        const isLiked = t.likedBy.includes(currentUser.id);
+        const newLikedBy = isLiked ? t.likedBy.filter((id) => id !== currentUser.id) : [...t.likedBy, currentUser.id];
+        const updated = {
+          ...t,
+          likedBy: newLikedBy,
+          likes: newLikedBy.length,
+        };
+        saveForumTopicToCloudflare(updated);
         return updated;
       })
     );
@@ -2256,20 +1824,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setForumTopics((prev) =>
       prev.map((t) => {
         if (t.id !== topicId) return t;
-        const updatedReplies = t.replies.map((r) => {
+        const updatedReplies = (t.replies || []).map((r) => {
           if (r.id !== replyId) return r;
-          const hasLiked = r.likedBy.includes(currentUser.id);
-          const newLikedBy = hasLiked ? r.likedBy.filter((id) => id !== currentUser.id) : [...r.likedBy, currentUser.id];
-          return { ...r, likedBy: newLikedBy, likes: newLikedBy.length };
+          const isLiked = r.likedBy.includes(currentUser.id);
+          const newLikedBy = isLiked ? r.likedBy.filter((id) => id !== currentUser.id) : [...r.likedBy, currentUser.id];
+          return {
+            ...r,
+            likedBy: newLikedBy,
+            likes: newLikedBy.length,
+          };
         });
         const updated = { ...t, replies: updatedReplies };
-        syncForumTopicToFirestore(updated);
+        saveForumTopicToCloudflare(updated);
         return updated;
       })
     );
   };
 
-  // Silinen & Kayıp Eserler Arşivi (PDF Arşivi) Actions
+  // ==========================================
+  // ARCHIVED STORIES (PDF ARCHIVE)
+  // ==========================================
+
   const addArchivedStory = async (storyData: {
     title: string;
     originalAuthor: string;
@@ -2282,54 +1857,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     pdfFileSize?: string;
     coverUrl?: string;
   }): Promise<{ success: boolean; id?: string; error?: string }> => {
-    if (!currentUser) {
-      setIsAuthModalOpen(true);
-      return { success: false, error: 'Hikaye eklemek için lütfen önce giriş yapın.' };
-    }
-    if (!storyData.title.trim()) {
-      return { success: false, error: 'Hikaye adı zorunludur.' };
-    }
-    if (!storyData.originalAuthor.trim()) {
-      return { success: false, error: 'Orijinal yazar adı zorunludur.' };
-    }
-    if (!storyData.pdfUrl) {
-      return { success: false, error: 'PDF dosyası veya bağlantısı eklenmelidir.' };
-    }
-
-    const newArchiveId = 'arch_' + Date.now();
-    const newArchivedStory: ArchivedStory = {
-      id: newArchiveId,
-      title: storyData.title.trim(),
-      originalAuthor: storyData.originalAuthor.trim(),
-      chapterCount: storyData.chapterCount ? String(storyData.chapterCount) : 'Bilinmiyor',
-      summary: storyData.summary.trim() || 'Özet belirtilmemiş.',
-      category: (storyData.category as Category) || 'Genç Kurgu',
-      tags: storyData.tags && storyData.tags.length > 0 ? storyData.tags : ['Arşiv', 'KayıpHikaye'],
+    if (!currentUser) return { success: false, error: 'Giriş yapmanız gerekmektedir.' };
+    const newId = 'arch_' + Date.now();
+    const newArchived: ArchivedStory = {
+      id: newId,
+      title: storyData.title,
+      originalAuthor: storyData.originalAuthor,
+      chapterCount: String(storyData.chapterCount),
+      summary: storyData.summary,
+      category: storyData.category || 'Genel Kurgu',
+      tags: storyData.tags || [],
       pdfUrl: storyData.pdfUrl,
-      pdfFileName: storyData.pdfFileName || `${storyData.title.trim().toLowerCase().replace(/\s+/g, '_')}.pdf`,
-      pdfFileSize: storyData.pdfFileSize || '1.5 MB',
-      coverUrl: storyData.coverUrl || 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&q=80&w=800',
+      pdfFileName: storyData.pdfFileName,
+      pdfFileSize: storyData.pdfFileSize,
+      coverUrl: storyData.coverUrl,
       addedByUserId: currentUser.id,
       addedByUserName: currentUser.name,
-      addedByUserUsername: currentUser.username,
+      addedByUserUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
       addedByUserAvatar: currentUser.avatar,
-      addedAt: new Date().toISOString().split('T')[0],
+      addedAt: new Date().toISOString(),
+      downloads: 0,
+      downloadsCount: 0,
       likes: 0,
       likedBy: [],
-      downloads: 0,
-      comments: []
+      comments: [],
     };
-
-    setArchivedStories((prev) => [newArchivedStory, ...prev]);
-    await syncArchivedStoryToFirestore(newArchivedStory);
-
-    return { success: true, id: newArchiveId };
+    setArchivedStories((prev) => [newArchived, ...prev]);
+    return { success: true, id: newId };
   };
 
   const deleteArchivedStory = (archiveId: string) => {
     if (!currentUser) return;
     setArchivedStories((prev) => prev.filter((a) => a.id !== archiveId));
-    deleteArchivedStoryFromFirestore(archiveId);
   };
 
   const toggleLikeArchivedStory = (archiveId: string) => {
@@ -2340,38 +1899,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setArchivedStories((prev) =>
       prev.map((a) => {
         if (a.id !== archiveId) return a;
-        const hasLiked = a.likedBy.includes(currentUser.id);
-        const newLikedBy = hasLiked ? a.likedBy.filter((id) => id !== currentUser.id) : [...a.likedBy, currentUser.id];
-        const updated = { ...a, likedBy: newLikedBy, likes: newLikedBy.length };
-        syncArchivedStoryToFirestore(updated);
-        return updated;
+        const isLiked = a.likedBy.includes(currentUser.id);
+        const newLikedBy = isLiked ? a.likedBy.filter((id) => id !== currentUser.id) : [...a.likedBy, currentUser.id];
+        return {
+          ...a,
+          likedBy: newLikedBy,
+          likes: newLikedBy.length,
+        };
       })
     );
   };
 
   const addArchivedStoryComment = (archiveId: string, content: string) => {
-    if (!currentUser || !content.trim()) {
-      if (!currentUser) setIsAuthModalOpen(true);
-      return;
-    }
-    const newComment: ArchivedStoryComment = {
-      id: 'arch_c_' + Date.now(),
+    if (!currentUser || !content.trim()) return;
+    const newComm: ArchivedStoryComment = {
+      id: 'arch_comm_' + Date.now(),
+      archiveId,
       userId: currentUser.id,
       userName: currentUser.name,
-      userUsername: currentUser.username,
+      userUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
       userAvatar: currentUser.avatar,
       content: content.trim(),
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
       likes: 0,
-      likedBy: []
+      likedBy: [],
     };
-
     setArchivedStories((prev) =>
       prev.map((a) => {
         if (a.id !== archiveId) return a;
-        const updated = { ...a, comments: [...(a.comments || []), newComment] };
-        syncArchivedStoryToFirestore(updated);
-        return updated;
+        return {
+          ...a,
+          comments: [newComm, ...(a.comments || [])],
+        };
       })
     );
   };
@@ -2381,9 +1940,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setArchivedStories((prev) =>
       prev.map((a) => {
         if (a.id !== archiveId) return a;
-        const updated = { ...a, comments: (a.comments || []).filter((c) => c.id !== commentId) };
-        syncArchivedStoryToFirestore(updated);
-        return updated;
+        return {
+          ...a,
+          comments: (a.comments || []).filter((c) => c.id !== commentId),
+        };
       })
     );
   };
@@ -2392,31 +1952,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setArchivedStories((prev) =>
       prev.map((a) => {
         if (a.id !== archiveId) return a;
-        const updated = { ...a, downloads: (a.downloads || 0) + 1 };
-        syncArchivedStoryToFirestore(updated);
-        return updated;
+        return {
+          ...a,
+          downloadsCount: (a.downloadsCount || 0) + 1,
+        };
       })
     );
   };
 
-  const incrementStoryReads = (storyId: string, chapterIndex: number) => {
-    setStories((prev) =>
-      prev.map((s) => {
-        if (s.id !== storyId) return s;
-        const updatedChapters = s.chapters.map((chap, idx) =>
-          idx === chapterIndex ? { ...chap, readCount: chap.readCount + 1 } : chap
-        );
-        const updated = { ...s, reads: s.reads + 1, chapters: updatedChapters };
-        syncStoryToFirestore(updated);
-        return updated;
-      })
-    );
-  };
+  // ==========================================
+  // LIBRARY & READING
+  // ==========================================
 
-  // Library actions
   const isStoryInLibrary = (storyId: string) => {
     if (!currentUser) return false;
-    return currentUser.library.some((item) => item.storyId === storyId);
+    return currentUser.library?.some((item) => item.storyId === storyId) || false;
   };
 
   const toggleLibraryStory = (
@@ -2431,13 +1981,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id !== currentUser.id) return u;
-        const exists = u.library.some((item) => item.storyId === storyId);
+        const currentLib = u.library || [];
+        const exists = currentLib.some((item) => item.storyId === storyId);
         let newLib;
         if (exists) {
-          newLib = u.library.filter((item) => item.storyId !== storyId);
+          newLib = currentLib.filter((item) => item.storyId !== storyId);
         } else {
           newLib = [
-            ...u.library,
+            ...currentLib,
             {
               storyId,
               status,
@@ -2447,13 +1998,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ];
         }
         const updatedUser = { ...u, library: newLib };
-        syncUserToFirestore(updatedUser);
+        saveUserToCloudflare(updatedUser);
         return updatedUser;
       })
     );
   };
 
-  // Follow actions
+  // ==========================================
+  // FOLLOW SYSTEM
+  // ==========================================
+
   const toggleFollowUser = (targetUserId: string) => {
     if (!currentUser) {
       setIsAuthModalOpen(true);
@@ -2461,24 +2015,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (targetUserId === currentUser.id) return;
 
-    const isFollowing = currentUser.following.includes(targetUserId);
+    const currentFollowing = currentUser.following || [];
+    const isFollowing = currentFollowing.includes(targetUserId);
 
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === currentUser.id) {
           const newFollowing = isFollowing
-            ? u.following.filter((id) => id !== targetUserId)
-            : [...u.following, targetUserId];
-          const updatedUser = { ...u, following: newFollowing };
-          syncUserToFirestore(updatedUser);
+            ? (u.following || []).filter((id) => id !== targetUserId)
+            : [...(u.following || []), targetUserId];
+          const updatedUser = { ...u, following: newFollowing, followingCount: newFollowing.length };
+          saveUserToCloudflare(updatedUser);
           return updatedUser;
         }
         if (u.id === targetUserId) {
           const newFollowers = isFollowing
-            ? u.followers.filter((id) => id !== currentUser.id)
-            : [...u.followers, currentUser.id];
-          const updatedUser = { ...u, followers: newFollowers };
-          syncUserToFirestore(updatedUser);
+            ? (u.followers || []).filter((id) => id !== currentUser.id)
+            : [...(u.followers || []), currentUser.id];
+          const updatedUser = { ...u, followers: newFollowers, followersCount: newFollowers.length };
+          saveUserToCloudflare(updatedUser);
           return updatedUser;
         }
         return u;
@@ -2508,7 +2063,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((n) => {
         if (n.id === notificationId) {
           const updated = { ...n, isRead: true };
-          syncNotificationToFirestore(updated);
+          saveNotificationToCloudflare(updated);
           return updated;
         }
         return n;
@@ -2521,12 +2076,272 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((n) => {
         if (n.userId === currentUserId) {
           const updated = { ...n, isRead: true };
-          syncNotificationToFirestore(updated);
+          saveNotificationToCloudflare(updated);
           return updated;
         }
         return n;
       })
     );
+  };
+
+  // ==========================================
+  // ADMIN & MODERATION SYSTEM
+  // ==========================================
+  const isAdmin = Boolean(
+    currentUser && (
+      currentUser.role === 'admin' ||
+      currentUser.email?.toLowerCase() === 'semajim30@gmail.com' ||
+      currentUser.email?.toLowerCase() === 'wattyboontr@gmail.com'
+    )
+  );
+
+  const updateUserRole = (targetUserId: string, newRole: UserRole) => {
+    if (!isAdmin) return;
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== targetUserId) return u;
+        const updated = { ...u, role: newRole };
+        saveUserToCloudflare(updated);
+        
+        const roleLabels: Record<UserRole, string> = {
+          admin: 'Yönetici (Admin)',
+          moderator: 'Moderatör',
+          author: 'Yazar',
+          user: 'Standart Üye'
+        };
+
+        sendNotification({
+          userId: targetUserId,
+          type: 'system',
+          title: '🛡️ Yetki & Rol Güncellendi',
+          message: `Hesabınızın yetki düzeyi WattyBoon yönetimi tarafından "${roleLabels[newRole] || newRole}" olarak güncellendi.`,
+        });
+        return updated;
+      })
+    );
+  };
+
+  const adminDeleteUser = (targetUserId: string, reason?: string): { success: boolean; error?: string } => {
+    if (!isAdmin) return { success: false, error: 'Bu işlem için yönetici yetkisi gereklidir.' };
+    const target = users.find((u) => u.id === targetUserId);
+    if (!target) return { success: false, error: 'Kullanıcı bulunamadı.' };
+    
+    if (target.email?.toLowerCase() === 'semajim30@gmail.com' || target.email?.toLowerCase() === 'wattyboontr@gmail.com') {
+      return { success: false, error: 'Baş yönetici hesabı silinemez veya kısıtlanamaz!' };
+    }
+
+    setUsers((prev) => prev.filter((u) => u.id !== targetUserId));
+    deleteUserFromCloudflare(targetUserId);
+
+    // If deleting self (not recommended)
+    if (currentUserId === targetUserId) {
+      logout();
+    }
+
+    return { success: true };
+  };
+
+  const adminDeleteStory = (storyId: string, reason?: string) => {
+    if (!isAdmin) return;
+    const targetStory = stories.find((s) => s.id === storyId);
+    if (!targetStory) return;
+
+    setStories((prev) => prev.filter((s) => s.id !== storyId));
+    deleteStoryFromCloudflare(storyId);
+
+    if (targetStory.authorId) {
+      sendNotification({
+        userId: targetStory.authorId,
+        type: 'system',
+        title: '⚠️ Hikayeniz Yayından Kaldırıldı',
+        message: `"${targetStory.title}" adlı hikayeniz, platform kuralları veya yönetici kararı doğrultusunda yönetim ekibi tarafından yayından kaldırılmıştır.${reason ? ` Gerekçe: ${reason}` : ''}`,
+      });
+    }
+  };
+
+  const adminDeleteForumTopic = (topicId: string, reason?: string) => {
+    if (!isAdmin) return;
+    const targetTopic = forumTopics.find((t) => t.id === topicId);
+    if (!targetTopic) return;
+
+    setForumTopics((prev) => prev.filter((t) => t.id !== topicId));
+    deleteForumTopicFromCloudflare(topicId);
+
+    if (targetTopic.authorId) {
+      sendNotification({
+        userId: targetTopic.authorId,
+        type: 'system',
+        title: '⚠️ Forum Konunuz Kaldırıldı',
+        message: `"${targetTopic.title}" başlıklı forum konunuz yönetim ekibi tarafından yayından kaldırılmıştır.${reason ? ` Gerekçe: ${reason}` : ''}`,
+      });
+    }
+  };
+
+  const adminDeleteForumReply = (topicId: string, replyId: string, reason?: string) => {
+    if (!isAdmin) return;
+    const targetTopic = forumTopics.find((t) => t.id === topicId);
+    if (!targetTopic) return;
+    const targetReply = targetTopic.replies?.find((r) => r.id === replyId);
+
+    setForumTopics((prev) =>
+      prev.map((t) => {
+        if (t.id !== topicId) return t;
+        const updated = {
+          ...t,
+          replies: (t.replies || []).filter((r) => r.id !== replyId),
+        };
+        saveForumTopicToCloudflare(updated);
+        return updated;
+      })
+    );
+
+    if (targetReply?.userId) {
+      sendNotification({
+        userId: targetReply.userId,
+        type: 'system',
+        title: '⚠️ Forum Yanıtınız Kaldırıldı',
+        message: `"${targetTopic.title}" konusundaki yanıtınız yönetim ekibi tarafından kaldırılmıştır.${reason ? ` Gerekçe: ${reason}` : ''}`,
+      });
+    }
+  };
+
+  const adminDeleteComment = (storyId: string, commentId: string, reason?: string) => {
+    if (!isAdmin) return;
+    const targetStory = stories.find((s) => s.id === storyId);
+    if (!targetStory) return;
+    const targetComment = targetStory.comments?.find((c) => c.id === commentId);
+
+    setStories((prev) =>
+      prev.map((s) => {
+        if (s.id !== storyId) return s;
+        const updated = {
+          ...s,
+          comments: (s.comments || []).filter((c) => c.id !== commentId),
+        };
+        saveStoryToCloudflare(updated);
+        return updated;
+      })
+    );
+
+    if (targetComment?.userId) {
+      sendNotification({
+        userId: targetComment.userId,
+        type: 'system',
+        title: '⚠️ Yorumunuz Kaldırıldı',
+        message: `"${targetStory.title}" adlı hikayedeki yorumunuz yönetim ekibi tarafından kaldırılmıştır.${reason ? ` Gerekçe: ${reason}` : ''}`,
+      });
+    }
+  };
+
+  const adminTogglePinForumTopic = (topicId: string) => {
+    if (!isAdmin) return;
+    setForumTopics((prev) =>
+      prev.map((t) => {
+        if (t.id !== topicId) return t;
+        const updated = { ...t, isPinned: !t.isPinned };
+        saveForumTopicToCloudflare(updated);
+        return updated;
+      })
+    );
+  };
+
+  // ==========================================
+  // STORY REPORTS & MODERATION (Şikayetler)
+  // ==========================================
+
+  const submitStoryReport = async (reportData: {
+    storyId: string;
+    storyTitle: string;
+    storyCoverUrl?: string;
+    authorId: string;
+    authorName: string;
+    authorUsername?: string;
+    reason: ReportReason;
+    reasonTitle: string;
+    description: string;
+    originalSourceUrl?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return { success: false, message: 'Şikayette bulunmak için lütfen giriş yapınız.' };
+    }
+
+    const newReport: StoryReport = {
+      id: 'report_' + Date.now(),
+      storyId: reportData.storyId,
+      storyTitle: reportData.storyTitle,
+      storyCoverUrl: reportData.storyCoverUrl,
+      authorId: reportData.authorId,
+      authorName: reportData.authorName,
+      authorUsername: reportData.authorUsername,
+      reporterId: currentUser.id,
+      reporterName: currentUser.name,
+      reporterUsername: currentUser.username || currentUser.name.toLowerCase().replace(/\s+/g, ''),
+      reporterEmail: currentUser.email,
+      reason: reportData.reason,
+      reasonTitle: reportData.reasonTitle,
+      description: reportData.description,
+      originalSourceUrl: reportData.originalSourceUrl,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    setReports((prev) => [newReport, ...prev]);
+    await saveReportToCloudflare(newReport);
+    return { 
+      success: true, 
+      message: 'Şikayetiniz yöneticilere iletildi. Çalıntı / ihlal incelemesi yapılarak gerekirse işlem uygulanacaktır.' 
+    };
+  };
+
+  const adminResolveReport = async (
+    reportId: string, 
+    status: ReportStatus, 
+    note?: string, 
+    deleteReportedStory?: boolean
+  ): Promise<boolean> => {
+    if (!isAdmin) return false;
+    const targetReport = reports.find((r) => r.id === reportId);
+    if (!targetReport) return false;
+
+    const updatedReport: StoryReport = {
+      ...targetReport,
+      status,
+      resolvedAt: new Date().toISOString(),
+      resolvedBy: currentUser?.name || 'Yönetici',
+      resolutionNote: note,
+    };
+
+    setReports((prev) => prev.map((r) => (r.id === reportId ? updatedReport : r)));
+    await saveReportToCloudflare(updatedReport);
+
+    if (deleteReportedStory && targetReport.storyId) {
+      adminDeleteStory(
+        targetReport.storyId,
+        `Şikayet incelemesi sonucu kaldırıldı: ${targetReport.reasonTitle}${note ? ` (${note})` : ''}`
+      );
+    }
+
+    // Send outcome notification to reporter
+    if (targetReport.reporterId) {
+      sendNotification({
+        userId: targetReport.reporterId,
+        type: 'system',
+        title: '🛡️ Şikayet Raporunuz İncelendi',
+        message: `"${targetReport.storyTitle}" adlı hikaye hakkındaki şikayetiniz incelendi. Sonuç: ${
+          status === 'resolved' ? 'Gerekli işlem yapıldı / Eser yayından kaldırıldı' : 'İncelendi & Kural ihlali bulunamadı'
+        }.${note ? ` Yönetici Notu: ${note}` : ''}`,
+      });
+    }
+
+    return true;
+  };
+
+  const adminDeleteReport = async (reportId: string): Promise<boolean> => {
+    if (!isAdmin) return false;
+    setReports((prev) => prev.filter((r) => r.id !== reportId));
+    await deleteReportFromCloudflare(reportId);
+    return true;
   };
 
   return (
@@ -2621,6 +2436,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unreadNotificationCount,
         markAsRead,
         markAllAsRead,
+
+        // Reports
+        reports,
+        submitStoryReport,
+        adminResolveReport,
+        adminDeleteReport,
+
+        isAdmin,
+        updateUserRole,
+        adminDeleteUser,
+        adminDeleteStory,
+        adminDeleteForumTopic,
+        adminDeleteForumReply,
+        adminDeleteComment,
+        adminTogglePinForumTopic,
 
         isAuthModalOpen,
         setIsAuthModalOpen,

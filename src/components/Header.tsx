@@ -55,7 +55,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal }) => {
     unreadMessageCount,
     openMessagingWithUser,
     logout,
-    setIsAuthModalOpen
+    setIsAuthModalOpen,
+    isAdmin
   } = useApp();
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -287,6 +288,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenInfoModal }) => {
                       <UserIcon className="w-4 h-4 text-purple-500" />
                       Profilimi Görüntüle
                     </button>
+
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setActiveView('admin');
+                          setIsUserMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-rose-600" />
+                        <span>🛡️ Yönetim Paneli</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {

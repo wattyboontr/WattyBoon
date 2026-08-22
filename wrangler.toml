@@ -1,0 +1,12 @@
+name = "wattyboon"
+main = "server.ts"
+compatibility_date = "2026-08-22"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "wattyboon-db"
+database_id = "a308332f-8ca1-4a19-94ef-c519b5af1e17"
+
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "wattyboon-assets"
