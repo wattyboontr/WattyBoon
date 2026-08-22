@@ -105,7 +105,7 @@ export type ReportReason =
   | 'spam_misleading' // Spam veya Yanıltıcı İçerik
   | 'other'; // Diğer
 
-export type ReportStatus = 'pending' | 'resolved' | 'dismissed';
+export type ReportStatus = 'pending' | 'resolved' | 'dismissed' | 'investigating';
 
 export interface StoryReport {
   id: string;

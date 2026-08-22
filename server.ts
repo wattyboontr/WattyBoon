@@ -107,10 +107,9 @@ app.post('/api/formspree/webhook', async (req, res) => {
   try {
     const { email, message } = req.body;
     
-    // @ts-ignore - access D1 binding from process.env in Cloudflare Pages Functions
-    const db = process.env.DB;
+    const db = (process.env as any).DB;
     
-    if (db) {
+    if (db && typeof db.prepare === 'function') {
       await db.prepare("INSERT INTO ContactSubmissions (email, message, createdAt) VALUES (?, ?, ?)")
         .bind(email, message, new Date().toISOString())
         .run();
@@ -127,10 +126,9 @@ app.post('/api/formspree/webhook', async (req, res) => {
 
 app.get('/api/formspree/submissions', async (req, res) => {
   try {
-    // @ts-ignore - access D1 binding from process.env in Cloudflare Pages Functions
-    const db = process.env.DB;
+    const db = (process.env as any).DB;
     
-    if (db) {
+    if (db && typeof db.prepare === 'function') {
       const { results } = await db.prepare("SELECT * FROM ContactSubmissions ORDER BY createdAt DESC").all();
       res.json({ success: true, data: results });
     } else {
