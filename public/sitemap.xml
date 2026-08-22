@@ -14,7 +14,7 @@
 
   <!-- Keşfet & Hikaye Arama -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kesfet</loc>
+    <loc>https://wattyboon.com/kesfet</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
@@ -22,7 +22,7 @@
 
   <!-- Kategoriler -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategoriler</loc>
+    <loc>https://wattyboon.com/kategoriler</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -30,15 +30,23 @@
 
   <!-- Forum & Topluluk Tartışmaları -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=forum</loc>
+    <loc>https://wattyboon.com/forum</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
 
+  <!-- Kütüphanem -->
+  <url>
+    <loc>https://wattyboon.com/kutuphanem</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+
   <!-- Hikaye Yaz / Yazar Editörü -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=yaz</loc>
+    <loc>https://wattyboon.com/yaz</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -46,7 +54,7 @@
 
   <!-- Site Haritası Sayfası -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=sitemap</loc>
+    <loc>https://wattyboon.com/sitemap</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -54,7 +62,7 @@
 
   <!-- Kategori: Romantik -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Romantik</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Romantik</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -62,7 +70,7 @@
 
   <!-- Kategori: Fantastik -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Fantastik</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Fantastik</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -70,7 +78,7 @@
 
   <!-- Kategori: Bilim Kurgu -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Bilim+Kurgu</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Bilim+Kurgu</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -78,7 +86,7 @@
 
   <!-- Kategori: Gizem -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Gizem</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Gizem</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -86,7 +94,7 @@
 
   <!-- Kategori: Korku -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Korku</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Korku</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -94,7 +102,7 @@
 
   <!-- Kategori: Macera -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Macera</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Macera</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -102,7 +110,7 @@
 
   <!-- Kategori: Gençlik -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Gen%C3%A7lik</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Gen%C3%A7lik</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -110,7 +118,7 @@
 
   <!-- Kategori: Şiir -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=%C5%9Eiir</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=%C5%9Eiir</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -118,7 +126,7 @@
 
   <!-- Kategori: Tarih -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Tarih</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Tarih</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -126,7 +134,7 @@
 
   <!-- Kategori: Klasik -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Klasik</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Klasik</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -134,7 +142,7 @@
 
   <!-- Kategori: Kısa Hikaye -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=K%C4%B1sa+Hikaye</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=K%C4%B1sa+Hikaye</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -142,7 +150,7 @@
 
   <!-- Kategori: Mizah -->
   <url>
-    <loc>https://wattyboon.com/?sayfa=kategori&amp;kategori=Mizah</loc>
+    <loc>https://wattyboon.com/kesfet?kategori=Mizah</loc>
     <lastmod>2026-08-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

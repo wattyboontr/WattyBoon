@@ -100,7 +100,12 @@ export const AuthModal: React.FC = () => {
       setCodeSent(true);
       setPendingAction('register');
       setActiveTab('otp_verify');
-      setSuccessMsg(`Onay kodu ${trimmedEmail} adresine iletildi. Lütfen gelen 6 haneli kodu giriniz.`);
+      if (sendRes.localCode) {
+        setOtpCode(sendRes.localCode);
+        setSuccessMsg(`Onay kodu (${sendRes.localCode}) ${trimmedEmail} adresine iletildi.`);
+      } else {
+        setSuccessMsg(`Onay kodu ${trimmedEmail} adresine iletildi. Lütfen gelen 6 haneli kodu giriniz.`);
+      }
     } else {
       setErrorMsg(sendRes.error || 'Onay kodu gönderilemedi. Lütfen tekrar deneyiniz.');
     }
@@ -189,7 +194,9 @@ export const AuthModal: React.FC = () => {
   const handleGoogleAuth = async () => {
     setLoading(true);
     setErrorMsg('');
-    const res = await loginWithGoogle();
+    const customEmail = email.trim() ? email.trim().toLowerCase() : undefined;
+    const customName = name.trim() ? name.trim() : undefined;
+    const res = await loginWithGoogle(customEmail, customName);
     setLoading(false);
     if (res.success) {
       setIsAuthModalOpen(false);

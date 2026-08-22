@@ -29,11 +29,11 @@ export const SitemapView: React.FC = () => {
 
   const mainPages = [
     { title: 'Ana Sayfa', desc: 'Vitrin, öne çıkan eserler ve editör seçimleri', view: 'home', icon: BookOpen, url: 'https://wattyboon.com/' },
-    { title: 'Keşfet', desc: 'Gelişmiş filtreleme, popüler eserler ve arama motoru', view: 'explore', icon: Compass, url: 'https://wattyboon.com/?sayfa=kesfet' },
-    { title: 'Tüm Kategoriler', desc: '20+ edebiyat türü ve tematik koleksiyonlar', view: 'categories', icon: Grid, url: 'https://wattyboon.com/?sayfa=kategoriler' },
-    { title: 'Kütüphanem', desc: 'Okuma listeleri, favoriler ve okuma ilerlemeleri', view: 'library', icon: Bookmark, url: 'https://wattyboon.com/?sayfa=kutuphanem' },
-    { title: 'Topluluk & Forum', desc: 'Tartışmalar, yazarlık tüyoları ve teoriler', view: 'forum', icon: MessageSquare, url: 'https://wattyboon.com/?sayfa=forum' },
-    { title: 'Hikaye Yaz & Yayınla', desc: 'Bölüm editörü, müzik ekleme ve kapak yükleme', view: 'editor', icon: PenTool, url: 'https://wattyboon.com/?sayfa=yaz' },
+    { title: 'Keşfet', desc: 'Gelişmiş filtreleme, popüler eserler ve arama motoru', view: 'explore', icon: Compass, url: 'https://wattyboon.com/kesfet' },
+    { title: 'Tüm Kategoriler', desc: '20+ edebiyat türü ve tematik koleksiyonlar', view: 'categories', icon: Grid, url: 'https://wattyboon.com/kategoriler' },
+    { title: 'Kütüphanem', desc: 'Okuma listeleri, favoriler ve okuma ilerlemeleri', view: 'library', icon: Bookmark, url: 'https://wattyboon.com/kutuphanem' },
+    { title: 'Topluluk & Forum', desc: 'Tartışmalar, yazarlık tüyoları ve teoriler', view: 'forum', icon: MessageSquare, url: 'https://wattyboon.com/forum' },
+    { title: 'Hikaye Yaz & Yayınla', desc: 'Bölüm editörü, müzik ekleme ve kapak yükleme', view: 'editor', icon: PenTool, url: 'https://wattyboon.com/yaz' },
   ];
 
   const publicStories = useMemo(() => {

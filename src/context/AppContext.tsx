@@ -888,7 +888,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Helper to parse route from initial URL query params
+  // Helper to parse route from initial URL (supporting clean paths like /sitemap, /kesfet and legacy query params)
   const getInitialRouteFromUrl = (): {
     view: ViewType;
     storyId: string | null;
@@ -899,36 +899,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     tag?: string;
   } => {
     try {
-      const params = new URLSearchParams(window.location.search);
+      const pathname = (typeof window !== 'undefined' ? window.location.pathname : '/').replace(/\/+$/, '') || '/';
+      const pathSegments = pathname.split('/').filter(Boolean);
+      const firstSegment = pathSegments[0]?.toLowerCase();
+      const secondSegment = pathSegments[1];
+      const thirdSegment = pathSegments[2];
+
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
       const sayfa = params.get('sayfa')?.toLowerCase();
-      const id = params.get('id');
+      const queryId = params.get('id');
       const bolumStr = params.get('bolum');
-      const bolum = bolumStr ? Math.max(0, parseInt(bolumStr, 10) - 1) : 0;
-      const kategori = params.get('kategori');
-      const etiket = params.get('etiket') || undefined;
+      const queryBolum = bolumStr ? Math.max(0, parseInt(bolumStr, 10) - 1) : 0;
+      const kategoriParam = params.get('kategori');
+      const etiketParam = params.get('etiket') || undefined;
 
       let view: ViewType = 'home';
-      if (sayfa === 'anasayfa' || sayfa === 'home') view = 'home';
-      else if (sayfa === 'kesfet' || sayfa === 'explore' || sayfa === 'arama' || sayfa === 'ara') view = 'explore';
-      else if (sayfa === 'kategoriler' || sayfa === 'kategori') view = 'categories';
-      else if (sayfa === 'kutuphanem' || sayfa === 'kutuphane' || sayfa === 'library') view = 'library';
-      else if (sayfa === 'forum' || sayfa === 'tartisma') view = 'forum';
-      else if (sayfa === 'yaz' || sayfa === 'editor') view = 'editor';
-      else if (sayfa === 'hikaye' || sayfa === 'hikaye-detay' || sayfa === 'story') view = 'story-detail';
-      else if (sayfa === 'oku' || sayfa === 'reader') view = 'reader';
-      else if (sayfa === 'profil' || sayfa === 'profile') view = 'profile';
-      else if (sayfa === 'bildirimler' || sayfa === 'notifications') view = 'notifications';
-      else if (sayfa === 'sitemap' || sayfa === 'site-haritasi' || sayfa === 'harita') view = 'sitemap';
-      else if (kategori) view = 'explore';
+      let storyId: string | null = queryId || null;
+      let chapterIndex = queryBolum;
+      let authorId: string | null = queryId || null;
+      let editStoryId: string | null = null;
+      let category: Category | 'Tümü' = (kategoriParam as Category) || 'Tümü';
+      let tag: string | undefined = etiketParam;
+
+      // Clean path route resolution:
+      if (firstSegment === 'sitemap' || firstSegment === 'site-haritasi' || firstSegment === 'harita') {
+        view = 'sitemap';
+      } else if (firstSegment === 'kesfet' || firstSegment === 'explore' || firstSegment === 'arama' || firstSegment === 'ara') {
+        view = 'explore';
+      } else if (firstSegment === 'kategoriler') {
+        view = 'categories';
+      } else if (firstSegment === 'kategori') {
+        if (secondSegment) {
+          view = 'explore';
+          category = decodeURIComponent(secondSegment) as Category;
+        } else {
+          view = 'categories';
+        }
+      } else if (firstSegment === 'kutuphanem' || firstSegment === 'kutuphane' || firstSegment === 'library') {
+        view = 'library';
+      } else if (firstSegment === 'forum' || firstSegment === 'tartisma') {
+        view = 'forum';
+      } else if (firstSegment === 'yaz' || firstSegment === 'editor') {
+        view = 'editor';
+        editStoryId = secondSegment ? decodeURIComponent(secondSegment) : queryId || null;
+      } else if (firstSegment === 'hikaye' || firstSegment === 'story') {
+        view = 'story-detail';
+        if (secondSegment) storyId = decodeURIComponent(secondSegment);
+      } else if (firstSegment === 'oku' || firstSegment === 'reader') {
+        view = 'reader';
+        if (secondSegment) storyId = decodeURIComponent(secondSegment);
+        if (thirdSegment) chapterIndex = Math.max(0, parseInt(thirdSegment, 10) - 1);
+      } else if (firstSegment === 'profil' || firstSegment === 'profile' || firstSegment === 'yazar') {
+        view = 'profile';
+        if (secondSegment) authorId = decodeURIComponent(secondSegment);
+      } else if (firstSegment === 'bildirimler' || firstSegment === 'notifications') {
+        view = 'notifications';
+      }
+      // Legacy query param resolution fallback (?sayfa=...):
+      else if (sayfa) {
+        if (sayfa === 'anasayfa' || sayfa === 'home') view = 'home';
+        else if (sayfa === 'kesfet' || sayfa === 'explore' || sayfa === 'arama' || sayfa === 'ara') view = 'explore';
+        else if (sayfa === 'kategoriler' || sayfa === 'kategori') view = 'categories';
+        else if (sayfa === 'kutuphanem' || sayfa === 'kutuphane' || sayfa === 'library') view = 'library';
+        else if (sayfa === 'forum' || sayfa === 'tartisma') view = 'forum';
+        else if (sayfa === 'yaz' || sayfa === 'editor') {
+          view = 'editor';
+          editStoryId = queryId || null;
+        }
+        else if (sayfa === 'hikaye' || sayfa === 'hikaye-detay' || sayfa === 'story') view = 'story-detail';
+        else if (sayfa === 'oku' || sayfa === 'reader') view = 'reader';
+        else if (sayfa === 'profil' || sayfa === 'profile') view = 'profile';
+        else if (sayfa === 'bildirimler' || sayfa === 'notifications') view = 'notifications';
+        else if (sayfa === 'sitemap' || sayfa === 'site-haritasi' || sayfa === 'harita') view = 'sitemap';
+      } else if (kategoriParam) {
+        view = 'explore';
+      }
 
       return {
         view,
-        storyId: id || null,
-        chapterIndex: bolum,
-        authorId: id || null,
-        editStoryId: view === 'editor' ? id : null,
-        category: (kategori as Category) || 'Tümü',
-        tag: etiket,
+        storyId,
+        chapterIndex,
+        authorId,
+        editStoryId,
+        category,
+        tag,
       };
     } catch {
       return {
@@ -954,7 +1008,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [autoOpenProfileSettings, setAutoOpenProfileSettings] = useState<boolean>(false);
 
-  // Helper to generate dynamic URL search params and page document title
+  // Helper to generate dynamic clean URL paths and page document title
   const getUrlAndTitle = (
     view: ViewType,
     storyId: string | null = activeStoryId,
@@ -975,10 +1029,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       case 'explore': {
         const params = new URLSearchParams();
-        params.set('sayfa', 'kesfet');
         if (catFilter && catFilter !== 'Tümü') params.set('kategori', catFilter);
         if (tagFilter) params.set('etiket', tagFilter);
-        url = `?${params.toString()}`;
+        const queryStr = params.toString();
+        url = queryStr ? `/kesfet?${queryStr}` : '/kesfet';
         if (catFilter && catFilter !== 'Tümü') {
           title = `WattyBoon | ${catFilter} Hikayeleri`;
         } else if (tagFilter) {
@@ -990,41 +1044,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       case 'categories': {
         const params = new URLSearchParams();
-        params.set('sayfa', 'kategoriler');
         if (catFilter && catFilter !== 'Tümü') params.set('kategori', catFilter);
-        url = `?${params.toString()}`;
+        const queryStr = params.toString();
+        url = queryStr ? `/kategoriler?${queryStr}` : '/kategoriler';
         title = catFilter && catFilter !== 'Tümü' ? `WattyBoon | ${catFilter} Kategorisi` : 'WattyBoon | Tüm Kategoriler';
         break;
       }
       case 'library': {
-        url = '?sayfa=kutuphanem';
+        url = '/kutuphanem';
         title = 'WattyBoon | Kütüphanem';
         break;
       }
       case 'forum': {
-        url = '?sayfa=forum';
+        url = '/forum';
         title = 'WattyBoon | Topluluk ve Forum';
         break;
       }
       case 'editor': {
         if (editStoryId) {
-          url = `?sayfa=yaz&id=${editStoryId}`;
+          url = `/yaz?id=${encodeURIComponent(editStoryId)}`;
           const targetStory = stories.find((s) => s.id === editStoryId);
           title = targetStory ? `WattyBoon | Düzenle: ${targetStory.title}` : 'WattyBoon | Hikaye Düzenle';
         } else {
-          url = '?sayfa=yaz';
+          url = '/yaz';
           title = 'WattyBoon | Yeni Hikaye Yaz';
         }
         break;
       }
       case 'story-detail': {
-        url = storyId ? `?sayfa=hikaye&id=${storyId}` : '?sayfa=hikaye';
+        url = storyId ? `/hikaye/${encodeURIComponent(storyId)}` : '/hikaye';
         const targetStory = stories.find((s) => s.id === storyId);
         title = targetStory ? `WattyBoon | ${targetStory.title}` : 'WattyBoon | Hikaye Detayı';
         break;
       }
       case 'reader': {
-        url = storyId ? `?sayfa=oku&id=${storyId}&bolum=${chapterIndex + 1}` : '?sayfa=oku';
+        url = storyId ? `/oku/${encodeURIComponent(storyId)}/${chapterIndex + 1}` : '/oku';
         const targetStory = stories.find((s) => s.id === storyId);
         const chapter = targetStory?.chapters?.[chapterIndex];
         const chapTitle = chapter ? (chapter.title || `Bölüm ${chapterIndex + 1}`) : `Bölüm ${chapterIndex + 1}`;
@@ -1033,18 +1087,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       case 'profile': {
         const targetId = authorId || currentUser?.id;
-        url = targetId ? `?sayfa=profil&id=${targetId}` : '?sayfa=profil';
+        url = targetId ? `/profil/${encodeURIComponent(targetId)}` : '/profil';
         const targetUser = users.find((u) => u.id === targetId);
         title = targetUser ? `WattyBoon | ${targetUser.name} (@${targetUser.username})` : 'WattyBoon | Yazar Profili';
         break;
       }
       case 'notifications': {
-        url = '?sayfa=bildirimler';
+        url = '/bildirimler';
         title = 'WattyBoon | Bildirimler';
         break;
       }
       case 'sitemap': {
-        url = '?sayfa=sitemap';
+        url = '/sitemap';
         title = 'WattyBoon | Site Haritası & İndeks';
         break;
       }

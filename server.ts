@@ -100,8 +100,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Dynamic Sitemap XML endpoint for Google Search Console & SEO (supports both /sitemap and /sitemap.xml)
-app.get(['/sitemap', '/sitemap.xml'], (req, res) => {
+// Dynamic Sitemap XML endpoint for Google Search Console & SEO (/sitemap.xml)
+app.get(['/sitemap.xml', '/api/sitemap.xml'], (req, res) => {
   try {
     const host = req.get('host') || 'wattyboon.com';
     const protocol = req.protocol === 'http' && !host.includes('localhost') ? 'https' : req.protocol;
@@ -109,23 +109,24 @@ app.get(['/sitemap', '/sitemap.xml'], (req, res) => {
 
     const staticUrls = [
       { loc: `${baseUrl}/`, priority: '1.0', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kesfet`, priority: '0.9', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategoriler`, priority: '0.8', changefreq: 'weekly' },
-      { loc: `${baseUrl}/?sayfa=forum`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=yaz`, priority: '0.7', changefreq: 'monthly' },
-      { loc: `${baseUrl}/?sayfa=sitemap`, priority: '0.7', changefreq: 'weekly' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Romantik`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Fantastik`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Bilim+Kurgu`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Gizem`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Korku`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Macera`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Gen%C3%A7lik`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=%C5%9Eiir`, priority: '0.7', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Tarih`, priority: '0.7', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Klasik`, priority: '0.7', changefreq: 'weekly' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=K%C4%B1sa+Hikaye`, priority: '0.7', changefreq: 'daily' },
-      { loc: `${baseUrl}/?sayfa=kategori&amp;kategori=Mizah`, priority: '0.7', changefreq: 'weekly' },
+      { loc: `${baseUrl}/kesfet`, priority: '0.9', changefreq: 'daily' },
+      { loc: `${baseUrl}/kategoriler`, priority: '0.8', changefreq: 'weekly' },
+      { loc: `${baseUrl}/forum`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/yaz`, priority: '0.7', changefreq: 'monthly' },
+      { loc: `${baseUrl}/kutuphanem`, priority: '0.7', changefreq: 'daily' },
+      { loc: `${baseUrl}/sitemap`, priority: '0.7', changefreq: 'weekly' },
+      { loc: `${baseUrl}/kesfet?kategori=Romantik`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Fantastik`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Bilim+Kurgu`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Gizem`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Korku`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Macera`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Gen%C3%A7lik`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=%C5%9Eiir`, priority: '0.7', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Tarih`, priority: '0.7', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Klasik`, priority: '0.7', changefreq: 'weekly' },
+      { loc: `${baseUrl}/kesfet?kategori=K%C4%B1sa+Hikaye`, priority: '0.7', changefreq: 'daily' },
+      { loc: `${baseUrl}/kesfet?kategori=Mizah`, priority: '0.7', changefreq: 'weekly' },
     ];
 
     const allStories = cloudflareStorage.getStories ? cloudflareStorage.getStories() : [];
@@ -133,7 +134,7 @@ app.get(['/sitemap', '/sitemap.xml'], (req, res) => {
       ? allStories
           .filter((s: any) => s.visibility === 'public')
           .map((s: any) => ({
-            loc: `${baseUrl}/?sayfa=hikaye&amp;id=${encodeURIComponent(s.id)}`,
+            loc: `${baseUrl}/hikaye/${encodeURIComponent(s.id)}`,
             priority: '0.8',
             changefreq: 'weekly',
             lastmod: s.updatedAt ? s.updatedAt.split('T')[0] : new Date().toISOString().split('T')[0],
