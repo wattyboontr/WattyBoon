@@ -1,6 +1,7 @@
 name = "wattyboon"
-main = "server.ts"
+pages_build_output_dir = "dist"
 compatibility_date = "2026-08-22"
+compatibility_flags = [ "nodejs_compat" ]
 
 [[d1_databases]]
 binding = "DB"
@@ -10,3 +11,4 @@ database_id = "a308332f-8ca1-4a19-94ef-c519b5af1e17"
 [[r2_buckets]]
 binding = "ASSETS_BUCKET"
 bucket_name = "wattyboon-assets"
+
